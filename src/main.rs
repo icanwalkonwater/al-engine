@@ -2,7 +2,6 @@
 extern crate log;
 
 use al_engine::application::Application;
-use al_engine::renderer::VulkanApplication;
 use simplelog::{Config, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
 
 fn setup_logger() {
@@ -17,6 +16,7 @@ fn setup_logger() {
 fn main() {
     setup_logger();
 
-    let mut app = Application::new();
+    info!("Starting...");
+    let app = Application::new();
     app.main_loop();
 }

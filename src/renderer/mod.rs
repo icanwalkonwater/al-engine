@@ -2,7 +2,6 @@ mod device_selection;
 pub mod vulkan_app;
 
 pub use vulkan_app::VulkanApplication;
-use vulkano::device::DeviceExtensions;
 
 #[cfg(debug_assertions)]
 const ENABLE_VALIDATION_LAYERS: bool = true;

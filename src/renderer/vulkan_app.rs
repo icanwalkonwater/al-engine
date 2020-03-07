@@ -1,9 +1,6 @@
 use crate::renderer::device_selection::pick_physical_device;
-use crate::renderer::{
-    APPLICATION_NAME, DIMENSIONS, ENABLE_VALIDATION_LAYERS, VALIDATION_LAYERS,
-};
+use crate::renderer::{APPLICATION_NAME, DIMENSIONS, ENABLE_VALIDATION_LAYERS, VALIDATION_LAYERS};
 use std::sync::Arc;
-use vulkano::instance::debug::{DebugCallback, MessageSeverity, MessageType};
 use vulkano::instance::{layers_list, ApplicationInfo, Instance, InstanceExtensions, Version};
 use vulkano::swapchain::Surface;
 use vulkano_win::VkSurfaceBuild;
@@ -11,6 +8,7 @@ use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoop;
 use winit::platform::unix::WindowBuilderExtUnix;
 use winit::window::{Window, WindowBuilder};
+use vulkano::instance::debug::DebugCallback;
 
 pub struct VulkanApplication {
     instance: Arc<Instance>,
@@ -56,7 +54,7 @@ impl VulkanApplication {
 
     fn create_instance() -> Arc<Instance> {
         if ENABLE_VALIDATION_LAYERS && !check_validation_layer_support() {
-            warn!("Validation layers request, but not available !");
+            warn!("Validation layers requested, but not available !");
         }
 
         let supported_extensions = InstanceExtensions::supported_by_core()
@@ -137,10 +135,16 @@ impl VulkanApplication {
                     "[Validation Layer] [{}] {}",
                     msg.layer_prefix, msg.description
                 );
-            } else {
+            } else if msg.severity.information {
                 info!(
                     "[Validation Layer] [{}] {}",
                     msg.layer_prefix, msg.description
+                );
+            } else {
+                trace!(
+                    "[Validation Layer] [{}] {}",
+                    msg.layer_prefix,
+                    msg.description
                 );
             }
         })

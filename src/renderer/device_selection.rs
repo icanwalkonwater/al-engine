@@ -82,7 +82,7 @@ pub fn pick_physical_device<'a>(
 ) -> PhysicalDevice<'a> {
     PhysicalDevice::enumerate(&instance)
         .find(|device| {
-            trace!("Trying device: {:?}", device);
+            trace!("Trying device: {:?}", device.name());
             is_device_suitable(surface, &device)
         })
         .expect("Failed to find a suitable GPU !")
