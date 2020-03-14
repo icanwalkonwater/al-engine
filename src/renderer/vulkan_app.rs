@@ -1,14 +1,21 @@
-use crate::renderer::device_selection::pick_physical_device;
+use crate::renderer::physical_device_selection::{
+    find_queue_families, pick_physical_device, required_extensions,
+};
 use crate::renderer::{APPLICATION_NAME, DIMENSIONS, ENABLE_VALIDATION_LAYERS, VALIDATION_LAYERS};
+use log::{error, info, trace, warn};
+use std::collections::HashSet;
+use std::iter::FromIterator;
 use std::sync::Arc;
-use vulkano::instance::{layers_list, ApplicationInfo, Instance, InstanceExtensions, Version};
+use vulkano::device::{Device, Features, Queue};
+use vulkano::instance::debug::{DebugCallback, MessageSeverity, MessageType};
+use vulkano::instance::{
+    layers_list, ApplicationInfo, Instance, InstanceExtensions, PhysicalDevice, Version,
+};
 use vulkano::swapchain::Surface;
 use vulkano_win::VkSurfaceBuild;
 use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoop;
-use winit::platform::unix::WindowBuilderExtUnix;
 use winit::window::{Window, WindowBuilder};
-use vulkano::instance::debug::DebugCallback;
 
 pub struct VulkanApplication {
     instance: Arc<Instance>,
@@ -16,6 +23,12 @@ pub struct VulkanApplication {
     debug_callback: DebugCallback,
 
     surface: Arc<Surface<Window>>,
+    physical_device_id: usize,
+
+    device: Arc<Device>,
+
+    graphics_queue: Arc<Queue>,
+    presentation_queue: Arc<Queue>,
 }
 
 impl VulkanApplication {
@@ -32,8 +45,10 @@ impl VulkanApplication {
         // Create the surface
         let (event_loop, surface) = Self::create_surface(&instance);
 
-        // Pick a physical device
-        let physical_device = pick_physical_device(&instance, &surface);
+        // Create device
+        let physical_device_id = pick_physical_device(&instance, &surface).index();
+        let (device, graphics_queue, presentation_queue) =
+            Self::create_logical_device(&instance, &surface, physical_device_id);
 
         (
             Self {
@@ -41,6 +56,10 @@ impl VulkanApplication {
                 #[cfg(debug_assertions)]
                 debug_callback,
                 surface,
+                physical_device_id,
+                device,
+                graphics_queue,
+                presentation_queue,
             },
             event_loop,
         )
@@ -95,9 +114,10 @@ impl VulkanApplication {
         trace!("Creating VK Surface");
 
         let event_loop = EventLoop::new();
+
         let surface = WindowBuilder::new()
             .with_title("AL-Engine")
-            .with_base_size(LogicalSize::new(
+            .with_inner_size(LogicalSize::new(
                 f64::from(DIMENSIONS.0),
                 f64::from(DIMENSIONS.1),
             ))
@@ -105,6 +125,41 @@ impl VulkanApplication {
             .expect("Failed to create window surface !");
 
         (event_loop, surface)
+    }
+
+    fn create_logical_device(
+        instance: &Arc<Instance>,
+        surface: &Arc<Surface<Window>>,
+        physical_device_index: usize,
+    ) -> (Arc<Device>, Arc<Queue>, Arc<Queue>) {
+        trace!("Creating logical device");
+
+        let physical_device = PhysicalDevice::from_index(&instance, physical_device_index).unwrap();
+        let indices = find_queue_families(surface, &physical_device).unwrap();
+
+        let families = [indices.graphics, indices.presentation];
+        let unique_queue_families: HashSet<&u32> = HashSet::from_iter(families.iter());
+
+        let queue_priority = 1.0;
+        let queue_families = unique_queue_families.into_iter().map(|i| {
+            (
+                physical_device.queue_family_by_id(*i).unwrap(),
+                queue_priority,
+            )
+        });
+
+        let (device, mut queues) = Device::new(
+            physical_device,
+            &Features::none(),
+            &required_extensions(),
+            queue_families,
+        )
+        .expect("Failed to create logical device !");
+
+        let graphics_queue = queues.next().unwrap();
+        let presentation_queue = queues.next().unwrap_or_else(|| graphics_queue.clone());
+
+        (device, graphics_queue, presentation_queue)
     }
 
     #[cfg(debug_assertions)]

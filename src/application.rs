@@ -1,4 +1,5 @@
 use crate::renderer::VulkanApplication;
+use log::info;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 

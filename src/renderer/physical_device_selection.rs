@@ -1,6 +1,7 @@
+use log::trace;
 use std::sync::Arc;
 use vulkano::device::DeviceExtensions;
-use vulkano::instance::{Instance, PhysicalDevice, QueueFamily};
+use vulkano::instance::{Instance, PhysicalDevice, PhysicalDeviceType, QueueFamily};
 use vulkano::swapchain::Surface;
 use winit::window::Window;
 
@@ -81,11 +82,18 @@ pub fn pick_physical_device<'a>(
     surface: &Arc<Surface<Window>>,
 ) -> PhysicalDevice<'a> {
     PhysicalDevice::enumerate(&instance)
-        .find(|device| {
+        .filter(|device| {
             trace!("Trying device: {:?}", device.name());
             is_device_suitable(surface, &device)
         })
+        .map(|device| {
+            let score = score_device(&device);
+            trace!("Device {:?} scored {}", device.name(), score);
+            (device, score)
+        })
+        .max_by_key(|(_, score)| *score)
         .expect("Failed to find a suitable GPU !")
+        .0
 }
 
 fn is_device_suitable(surface: &Arc<Surface<Window>>, device: &PhysicalDevice) -> bool {
@@ -106,7 +114,31 @@ fn is_device_suitable(surface: &Arc<Surface<Window>>, device: &PhysicalDevice) -
     families.is_some() && extensions_supported && swap_chain_adequate
 }
 
-fn find_queue_families(
+fn score_device(device: &PhysicalDevice) -> u32 {
+    let mut score = 0;
+
+    // Prefer dedicated GPU over everything else
+    score += match device.ty() {
+        PhysicalDeviceType::DiscreteGpu => 1_000,
+        PhysicalDeviceType::VirtualGpu => 500,
+        PhysicalDeviceType::IntegratedGpu => 100,
+        _ => 0,
+    };
+
+    // In case of a tie, choose based on the amount of memory available
+    let memory = device
+        .memory_heaps()
+        .filter(|heap| heap.is_device_local())
+        .map(|heap| heap.size())
+        .sum::<usize>();
+
+    // Add to the score but in Go instead of bytes
+    score += (memory / 1_000_000_000) as u32;
+
+    score
+}
+
+pub fn find_queue_families(
     surface: &Arc<Surface<Window>>,
     device: &PhysicalDevice,
 ) -> Option<QueueFamilyId> {
@@ -141,7 +173,7 @@ fn check_device_extension_support(device: &PhysicalDevice) -> bool {
 }
 
 /// Cannot be converted to a const because of [DeviceExtensions::none()](DeviceExtensions::none)
-fn required_extensions() -> DeviceExtensions {
+pub fn required_extensions() -> DeviceExtensions {
     DeviceExtensions {
         khr_swapchain: true,
         ..DeviceExtensions::none()

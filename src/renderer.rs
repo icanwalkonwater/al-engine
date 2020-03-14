@@ -1,4 +1,6 @@
-mod device_selection;
+mod physical_device_selection;
+mod swapchain_wrapper;
+mod test_material;
 pub mod vulkan_app;
 
 pub use vulkan_app::VulkanApplication;

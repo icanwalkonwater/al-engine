@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate log;
+use log::info;
 
 use al_engine::application::Application;
 use simplelog::{Config, LevelFilter, SimpleLogger, TermLogger, TerminalMode};
