@@ -1,4 +1,4 @@
-//! This module extends `VulkanApp` to implement validation layer hooks and routines.
+//! This module extends [`VulkanApp`] to implement validation layer hooks and routines.
 
 use crate::renderer::vulkan_app::VulkanApp;
 use crate::utils::vk_to_owned_string;
@@ -7,7 +7,7 @@ use ash::version::{EntryV1_0, InstanceV1_0};
 use ash::vk;
 use core::ffi;
 use log::{error, info, log_enabled, trace, warn, Level};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 
 pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 1] =
     ["VK_LAYER_KHRONOS_validation"];
@@ -73,6 +73,25 @@ impl VulkanApp {
             true
         }
     }
+
+    /// # Access Violation
+    /// This methods returns a Vec of owned string that need to stay in scope for as long as
+    /// the pointer of the second Vec are in use
+    pub(in crate::renderer) fn get_validation_layers_raw_owned() -> (Vec<CString>, Vec<*const i8>) {
+        // Create owned storage of raw names
+        // !!! Need to be alive until the instance is created
+        let required_layers_raw_names = REQUIRED_VALIDATION_LAYERS
+            .iter()
+            .map(|layer_name| CString::new(*layer_name).unwrap())
+            .collect::<Vec<_>>();
+
+        let required_layers_names = required_layers_raw_names
+            .iter()
+            .map(|layer_name| layer_name.as_ptr())
+            .collect::<Vec<_>>();
+
+        (required_layers_raw_names, required_layers_names)
+    }
 }
 
 /// Validation layer logging hook
@@ -116,7 +135,10 @@ unsafe extern "system" fn vulkan_debug_utils_callback(
 }
 
 /// Utils to print every useful information about a physical device.
-pub(in crate::renderer) fn debug_physical_device(instance: &ash::Instance, device: vk::PhysicalDevice) {
+pub(in crate::renderer) fn debug_physical_device(
+    instance: &ash::Instance,
+    device: vk::PhysicalDevice,
+) {
     let properties = unsafe { instance.get_physical_device_properties(device) };
     let features = unsafe { instance.get_physical_device_features(device) };
     let queue_families = unsafe { instance.get_physical_device_queue_family_properties(device) };
@@ -158,5 +180,8 @@ pub(in crate::renderer) fn debug_physical_device(instance: &ash::Instance, devic
     }
 
     trace!("\tGeometry shader: {}", features.geometry_shader != 0);
-    trace!("\tTesselation shader: {}", features.tessellation_shader != 0);
+    trace!(
+        "\tTesselation shader: {}",
+        features.tessellation_shader != 0
+    );
 }
