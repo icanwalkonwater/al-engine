@@ -68,7 +68,7 @@ impl VulkanApp {
             &swapchain_container.swapchain_images,
         );
 
-        let graphics_pipeline = Self::create_graphics_pipeline();
+        let graphics_pipeline = Self::create_graphics_pipeline(&device);
 
         #[cfg(debug_assertions)]
         let (debug_utils_loader, debug_utils_messenger) =
@@ -242,10 +242,6 @@ impl VulkanApp {
         };
 
         (device, indices)
-    }
-
-    fn create_graphics_pipeline() {
-        // TODO
     }
 }
 
