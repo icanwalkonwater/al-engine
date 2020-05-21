@@ -15,6 +15,7 @@ pub struct VulkanApp {
     _entry: ash::Entry,
     instance: ash::Instance,
     window: winit::window::Window,
+    physical_device: vk::PhysicalDevice,
 
     #[cfg(debug_assertions)]
     debug_utils_loader: DebugUtils,
@@ -27,6 +28,7 @@ impl VulkanApp {
         let entry = ash::Entry::new().expect("Failed to acquire Vulkan entry point !");
         let window = Self::create_window(event_loop);
         let instance = Self::create_instance(&entry, &window);
+        let physical_device = Self::pick_physical_device(&instance);
 
         #[cfg(debug_assertions)]
         let (debug_utils_loader, debug_utils_messenger) =
@@ -36,6 +38,8 @@ impl VulkanApp {
             _entry: entry,
             window,
             instance,
+            physical_device,
+
             #[cfg(debug_assertions)]
             debug_utils_loader,
             #[cfg(debug_assertions)]

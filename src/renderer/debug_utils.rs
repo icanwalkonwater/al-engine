@@ -1,13 +1,16 @@
+//! This module extends `VulkanApp` to implement validation layer hooks and routines.
+
 use crate::renderer::vulkan_app::VulkanApp;
 use crate::utils::vk_to_owned_string;
 use ash::extensions::ext::DebugUtils;
-use ash::version::EntryV1_0;
+use ash::version::{EntryV1_0, InstanceV1_0};
 use ash::vk;
 use core::ffi;
 use log::{error, info, log_enabled, trace, warn, Level};
 use std::ffi::CStr;
 
-pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
+pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 1] =
+    ["VK_LAYER_KHRONOS_validation"];
 
 impl VulkanApp {
     pub(in crate::renderer) fn setup_debug_utils(
@@ -42,6 +45,7 @@ impl VulkanApp {
             warn!("No available validation layers !");
             false
         } else {
+            // Save us the trouble of iterating if we won't see it logged
             if log_enabled!(Level::Trace) {
                 trace!("Available validation layers:");
                 for layer in layer_properties.iter() {
@@ -71,6 +75,7 @@ impl VulkanApp {
     }
 }
 
+/// Validation layer logging hook
 unsafe extern "system" fn vulkan_debug_utils_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
     message_types: vk::DebugUtilsMessageTypeFlagsEXT,
@@ -108,4 +113,50 @@ unsafe extern "system" fn vulkan_debug_utils_callback(
     };
 
     vk::FALSE
+}
+
+/// Utils to print every useful information about a physical device.
+pub(in crate::renderer) fn debug_physical_device(instance: &ash::Instance, device: vk::PhysicalDevice) {
+    let properties = unsafe { instance.get_physical_device_properties(device) };
+    let features = unsafe { instance.get_physical_device_features(device) };
+    let queue_families = unsafe { instance.get_physical_device_queue_family_properties(device) };
+
+    let name = vk_to_owned_string(&properties.device_name);
+    let device_type = match properties.device_type {
+        vk::PhysicalDeviceType::DISCRETE_GPU => "Discrete GPU",
+        vk::PhysicalDeviceType::VIRTUAL_GPU => "Virtual GPU",
+        vk::PhysicalDeviceType::INTEGRATED_GPU => "Integrated GPU",
+        vk::PhysicalDeviceType::CPU => "CPU",
+        _ => "Other",
+    };
+
+    trace!(
+        "Device: {}, id: {:x}:{:x}, type: {}",
+        name,
+        properties.vendor_id,
+        properties.device_id,
+        device_type
+    );
+
+    trace!("\tQueue families: {}", queue_families.len());
+    trace!("\tIndex | Queue Count | Graphics | Compute | Transfer | Sparse Binding");
+    for (index, family) in queue_families.iter().enumerate() {
+        let graphics = family.queue_flags.contains(vk::QueueFlags::GRAPHICS);
+        let compute = family.queue_flags.contains(vk::QueueFlags::COMPUTE);
+        let transfer = family.queue_flags.contains(vk::QueueFlags::TRANSFER);
+        let sparse = family.queue_flags.contains(vk::QueueFlags::SPARSE_BINDING);
+
+        trace!(
+            "\t{:^5} | {:^11} | {:^8} | {:^7} | {:^8} | {:^14}",
+            index,
+            family.queue_count,
+            graphics,
+            compute,
+            transfer,
+            sparse
+        );
+    }
+
+    trace!("\tGeometry shader: {}", features.geometry_shader != 0);
+    trace!("\tTesselation shader: {}", features.tessellation_shader != 0);
 }

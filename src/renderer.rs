@@ -3,6 +3,7 @@ use ash::vk;
 pub mod vulkan_app;
 #[cfg(debug_assertions)]
 mod debug_utils;
+mod device_selection;
 
 pub const WINDOW_TITLE: &str = "AL-Engine";
 pub const WINDOW_WIDTH: u32 = 800;
