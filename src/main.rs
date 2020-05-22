@@ -23,7 +23,7 @@ fn setup_logger() {
     );
 }
 
-fn main_loop(event_loop: EventLoop<()>, vulkan_app: VulkanApp) {
+fn main_loop(event_loop: EventLoop<()>, mut vulkan_app: VulkanApp) {
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { event, .. } => match event {
             WindowEvent::CloseRequested => {

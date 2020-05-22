@@ -1,10 +1,13 @@
 use crate::renderer::device_selection::QueueFamilies;
 use crate::renderer::swapchain::SwapchainContainer;
-use crate::renderer::{ENGINE_VERSION, VULKAN_VERSION, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH};
+use crate::renderer::sync::SyncObjects;
+use crate::renderer::{
+    ENGINE_VERSION, MAX_FRAMES_IN_FLIGHT, VULKAN_VERSION, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH,
+};
 use crate::APPLICATION_VERSION;
 #[cfg(debug_assertions)]
 use ash::extensions::ext::DebugUtils;
-use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
+use ash::version::{DeviceV1_0, DeviceV1_2, EntryV1_0, InstanceV1_0};
 use ash::vk;
 #[cfg(debug_assertions)]
 use core::ffi;
@@ -34,6 +37,9 @@ pub struct VulkanApp {
 
     command_pool: vk::CommandPool,
     command_buffers: Vec<vk::CommandBuffer>,
+
+    sync_objects: SyncObjects,
+    current_frame: usize,
 
     #[cfg(debug_assertions)]
     debug_utils_loader: DebugUtils,
@@ -100,6 +106,8 @@ impl VulkanApp {
             swapchain_container.swapchain_extent,
         );
 
+        let sync_objects = Self::create_sync_objects(&device);
+
         #[cfg(debug_assertions)]
         let (debug_utils_loader, debug_utils_messenger) =
             Self::setup_debug_utils(&entry, &instance);
@@ -126,6 +134,9 @@ impl VulkanApp {
 
             command_pool,
             command_buffers,
+
+            sync_objects,
+            current_frame: 0,
 
             #[cfg(debug_assertions)]
             debug_utils_loader,
@@ -285,8 +296,64 @@ impl VulkanApp {
 
 // Drawing methods
 impl VulkanApp {
-    pub fn draw_frame(&self) {
-        // dbg!()
+    pub fn draw_frame(&mut self) {
+        let wait_fences = [self.sync_objects.inflight_fences[self.current_frame]];
+
+        let (image_index, is_sub_optimal) = unsafe {
+            self.device
+                .wait_for_fences(&wait_fences, true, std::u64::MAX)
+                .expect("Failed to wait for Fences !");
+
+            self.swapchain_container
+                .swapchain_loader
+                .acquire_next_image(
+                    self.swapchain_container.swapchain,
+                    std::u64::MAX,
+                    self.sync_objects.image_available_semaphores[self.current_frame],
+                    vk::Fence::null(),
+                )
+                .expect("Failed to Acquire Next Image !")
+        };
+
+        let wait_semaphores = [self.sync_objects.image_available_semaphores[self.current_frame]];
+        let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
+        let signal_semaphores = [self.sync_objects.render_finished_semaphores[self.current_frame]];
+
+        let submit_info = [vk::SubmitInfo::builder()
+            .wait_semaphores(&wait_semaphores)
+            .wait_dst_stage_mask(&wait_stages)
+            .command_buffers(&[self.command_buffers[image_index as usize]])
+            .signal_semaphores(&signal_semaphores)
+            .build()];
+
+        unsafe {
+            self.device
+                .reset_fences(&wait_fences)
+                .expect("Failed to reset Fences !");
+
+            self.device
+                .queue_submit(
+                    self.graphics_queue,
+                    &submit_info,
+                    self.sync_objects.inflight_fences[self.current_frame],
+                )
+                .expect("Failed to execute Queue Submit !");
+        }
+
+        let presentation_info = vk::PresentInfoKHR::builder()
+            .wait_semaphores(&signal_semaphores)
+            .swapchains(&[self.swapchain_container.swapchain])
+            .image_indices(&[image_index])
+            .build();
+
+        unsafe {
+            self.swapchain_container
+                .swapchain_loader
+                .queue_present(self.presentation_queue, &presentation_info)
+                .expect("Failed to execute Queue Present !");
+        }
+
+        self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 }
 
@@ -300,6 +367,25 @@ impl VulkanApp {
 impl Drop for VulkanApp {
     fn drop(&mut self) {
         unsafe {
+            // Wait for frames to finish rendering before destroying stuff
+            self.device
+                .wait_for_fences(&self.sync_objects.inflight_fences, true, std::u64::MAX)
+                .expect("Failed to Wait For Fences !");
+
+            for ((&image_available_semaphore, &render_finished_semaphore), &inflight_fence) in self
+                .sync_objects
+                .image_available_semaphores
+                .iter()
+                .zip(self.sync_objects.render_finished_semaphores.iter())
+                .zip(self.sync_objects.inflight_fences.iter())
+            {
+                self.device
+                    .destroy_semaphore(image_available_semaphore, None);
+                self.device
+                    .destroy_semaphore(render_finished_semaphore, None);
+                self.device.destroy_fence(inflight_fence, None);
+            }
+
             self.device.destroy_command_pool(self.command_pool, None);
 
             for &framebuffer in self.framebuffers.iter() {

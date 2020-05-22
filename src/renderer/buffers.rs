@@ -4,6 +4,7 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 
 impl VulkanApp {
+    /// Create framebuffers to receive the output of a render pass.
     pub(in crate::renderer) fn create_framebuffers(
         device: &ash::Device,
         render_pass: vk::RenderPass,
@@ -30,6 +31,7 @@ impl VulkanApp {
             .collect::<Vec<_>>()
     }
 
+    /// Create a command pool used to create command buffers.
     pub(in crate::renderer) fn create_command_pool(
         device: &ash::Device,
         queue_families: &QueueFamilies,
@@ -45,6 +47,7 @@ impl VulkanApp {
         }
     }
 
+    /// Create command buffers configured with a pipeline and a render pass.
     pub(in crate::renderer) fn create_command_buffers(
         device: &ash::Device,
         command_pool: vk::CommandPool,

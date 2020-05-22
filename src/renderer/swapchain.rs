@@ -23,6 +23,7 @@ pub(in crate::renderer) struct SwapchainSupport {
 }
 
 impl VulkanApp {
+    /// Create the swapchain and its images.
     pub(in crate::renderer) fn create_swapchain(
         instance: &ash::Instance,
         device: &ash::Device,
@@ -132,6 +133,7 @@ impl VulkanApp {
         }
     }
 
+    /// Create image views to access swapchain images.
     pub(in crate::renderer) fn create_image_views(
         device: &ash::Device,
         surface_format: vk::Format,
@@ -172,6 +174,9 @@ impl VulkanApp {
             .collect()
     }
 
+    /// Preferred format is B8G8R8A8_UNORM.
+    /// Preferred color space is SRGB_NONLINEAR.
+    /// Falls back to whatever comes first.
     fn choose_swapchain_format(formats: &[vk::SurfaceFormatKHR]) -> vk::SurfaceFormatKHR {
         let format = formats.iter().find(|format| {
             format.format == vk::Format::B8G8R8A8_UNORM
@@ -190,6 +195,7 @@ impl VulkanApp {
         }
     }
 
+    // Prefer MAILBOX mode, falls back to IMMEDIATE and then to the default FIFO.
     fn choose_swapchain_presentation_mode(modes: &[vk::PresentModeKHR]) -> vk::PresentModeKHR {
         let mailbox = modes
             .iter()
@@ -212,6 +218,7 @@ impl VulkanApp {
         }
     }
 
+    /// The extent size is the window size clamped in the range supported by the surface.
     fn choose_swapchain_extent(capabilities: &vk::SurfaceCapabilitiesKHR) -> Extent2D {
         if capabilities.current_extent.width != u32::max_value() {
             capabilities.current_extent

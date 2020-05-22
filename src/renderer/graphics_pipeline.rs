@@ -173,14 +173,26 @@ impl VulkanApp {
             .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
             .build();
 
-        let subpass = vk::SubpassDescription::builder()
+        let subpasses = [vk::SubpassDescription::builder()
             .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
             .color_attachments(&[color_attachment_ref])
-            .build();
+            .build()];
+
+        // Sync
+        let subpass_dependencies = [vk::SubpassDependency::builder()
+            .src_subpass(vk::SUBPASS_EXTERNAL)
+            .dst_subpass(0)
+            .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+            .src_access_mask(vk::AccessFlags::empty())
+            .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+            .build()
+        ];
 
         let render_pass_create_info = vk::RenderPassCreateInfo::builder()
             .attachments(&[color_attachment])
-            .subpasses(&[subpass])
+            .subpasses(&subpasses)
+            .dependencies(&subpass_dependencies)
             .build();
 
         unsafe {
