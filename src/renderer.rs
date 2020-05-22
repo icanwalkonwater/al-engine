@@ -7,6 +7,7 @@ mod device_selection;
 mod graphics_pipeline;
 mod swapchain;
 mod sync;
+mod vertex;
 pub mod vulkan_app;
 
 pub const WINDOW_TITLE: &str = "AL-Engine";

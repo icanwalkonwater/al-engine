@@ -38,6 +38,11 @@ pub struct VulkanApp {
     pub(super) command_pool: vk::CommandPool,
     pub(super) command_buffers: Vec<vk::CommandBuffer>,
 
+    pub(super) vertex_buffer: vk::Buffer,
+    pub(super) vertex_buffer_memory: vk::DeviceMemory,
+    pub(super) index_buffer: vk::Buffer,
+    pub(super) index_buffer_memory: vk::DeviceMemory,
+
     pub(super) sync_objects: SyncObjects,
     current_frame: usize,
 
@@ -87,11 +92,8 @@ impl VulkanApp {
         );
 
         let render_pass = Self::create_render_pass(&device, swapchain_container.format);
-        let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
-            &device,
-            render_pass,
-            swapchain_container.extent,
-        );
+        let (graphics_pipeline, pipeline_layout) =
+            Self::create_graphics_pipeline(&device, render_pass, swapchain_container.extent);
 
         let framebuffers = Self::create_framebuffers(
             &device,
@@ -101,6 +103,23 @@ impl VulkanApp {
         );
 
         let command_pool = Self::create_command_pool(&device, &queue_families);
+
+        let (vertex_buffer, vertex_buffer_memory) = Self::create_vertex_buffer(
+            &instance,
+            &device,
+            physical_device,
+            command_pool,
+            graphics_queue,
+        );
+
+        let (index_buffer, index_buffer_memory) = Self::create_index_buffer(
+            &instance,
+            &device,
+            physical_device,
+            command_pool,
+            graphics_queue,
+        );
+
         let command_buffers = Self::create_command_buffers(
             &device,
             command_pool,
@@ -108,6 +127,8 @@ impl VulkanApp {
             &framebuffers,
             render_pass,
             swapchain_container.extent,
+            vertex_buffer,
+            index_buffer,
         );
 
         let sync_objects = Self::create_sync_objects(&device);
@@ -136,6 +157,11 @@ impl VulkanApp {
 
             command_pool,
             command_buffers,
+
+            vertex_buffer,
+            vertex_buffer_memory,
+            index_buffer,
+            index_buffer_memory,
 
             sync_objects,
             current_frame: 0,
@@ -283,6 +309,8 @@ impl VulkanApp {
 
         (device, indices)
     }
+
+    fn update_uniform_buffer() {}
 }
 
 // Drawing methods
@@ -296,15 +324,13 @@ impl VulkanApp {
                 .expect("Failed to wait for Fences !");
         }
 
-        let (image_index, is_sub_optimal) = unsafe {
-            let result = self.swapchain_container
-                .loader
-                .acquire_next_image(
-                    self.swapchain_container.swapchain,
-                    std::u64::MAX,
-                    self.sync_objects.image_available_semaphores[self.current_frame],
-                    vk::Fence::null(),
-                );
+        let (image_index, _is_sub_optimal) = unsafe {
+            let result = self.swapchain_container.loader.acquire_next_image(
+                self.swapchain_container.swapchain,
+                std::u64::MAX,
+                self.sync_objects.image_available_semaphores[self.current_frame],
+                vk::Fence::null(),
+            );
 
             match result {
                 Ok(image_index) => image_index,
@@ -312,9 +338,9 @@ impl VulkanApp {
                     vk::Result::ERROR_OUT_OF_DATE_KHR => {
                         self.recreate_swapchain();
                         return;
-                    },
-                    _ => panic!("Failed to Acquire Next Image !")
-                }
+                    }
+                    _ => panic!("Failed to Acquire Next Image !"),
+                },
             }
         };
 
@@ -360,7 +386,7 @@ impl VulkanApp {
             Err(result) => match result {
                 vk::Result::ERROR_OUT_OF_DATE_KHR | vk::Result::SUBOPTIMAL_KHR => true,
                 _ => panic!("Failed to execute Queue Present !"),
-            }
+            },
         };
 
         if need_new_swapchain {
@@ -382,8 +408,7 @@ impl Drop for VulkanApp {
     fn drop(&mut self) {
         unsafe {
             // Wait for frames to finish rendering before destroying stuff
-            self.device.device_wait_idle()
-                .expect("Failed to wait idle");
+            self.device.device_wait_idle().expect("Failed to wait idle");
 
             for ((&image_available_semaphore, &render_finished_semaphore), &inflight_fence) in self
                 .sync_objects
@@ -400,6 +425,12 @@ impl Drop for VulkanApp {
             }
 
             self.cleanup_swapchain();
+
+            // After the swapchain destruction because we used this buffer in a draw command.
+            self.device.destroy_buffer(self.vertex_buffer, None);
+            self.device.free_memory(self.vertex_buffer_memory, None);
+            self.device.destroy_buffer(self.index_buffer, None);
+            self.device.free_memory(self.index_buffer_memory, None);
 
             self.device.destroy_command_pool(self.command_pool, None);
 

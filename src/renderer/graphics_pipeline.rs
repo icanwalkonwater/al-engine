@@ -5,6 +5,7 @@ use ash::vk;
 use std::ffi::CString;
 use std::fs::File;
 use std::path::PathBuf;
+use crate::renderer::vertex::Vertex;
 
 impl VulkanApp {
     pub(super) fn create_graphics_pipeline(
@@ -37,7 +38,11 @@ impl VulkanApp {
                 .build(),
         ];
 
-        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder().build();
+        let vertex_binding_descriptions = Vertex::get_binding_descriptions();
+        let vertex_attribute_descriptions = Vertex::get_attribute_descriptions();
+        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
+            .vertex_binding_descriptions(&vertex_binding_descriptions)
+            .vertex_attribute_descriptions(&vertex_attribute_descriptions);
 
         let vertex_input_assembly_state_info = vk::PipelineInputAssemblyStateCreateInfo::builder()
             .primitive_restart_enable(false)
@@ -114,7 +119,7 @@ impl VulkanApp {
             .attachments(&color_attachment_states)
             .blend_constants([0., 0., 0., 0.]);
 
-        let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder().build();
+        let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder();
 
         let pipeline_layout = unsafe {
             device
@@ -156,10 +161,7 @@ impl VulkanApp {
         (graphics_pipelines[0], pipeline_layout)
     }
 
-    pub(super) fn create_render_pass(
-        device: &ash::Device,
-        format: vk::Format,
-    ) -> vk::RenderPass {
+    pub(super) fn create_render_pass(device: &ash::Device, format: vk::Format) -> vk::RenderPass {
         let color_attachment = vk::AttachmentDescription::builder()
             .format(format)
             .samples(vk::SampleCountFlags::TYPE_1)

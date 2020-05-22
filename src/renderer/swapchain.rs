@@ -154,11 +154,13 @@ impl VulkanApp {
             &self.framebuffers,
             self.render_pass,
             self.swapchain_container.extent,
+            self.vertex_buffer,
+            self.index_buffer,
         );
     }
 
     /// Destroys command buffers, graphics pipeline, pipeline layout, render pass, image views and swapchain.
-    pub(super) fn cleanup_swapchain(&mut self) {
+    pub(super) fn cleanup_swapchain(&self) {
         unsafe {
             self.device
                 .free_command_buffers(self.command_pool, &self.command_buffers);
