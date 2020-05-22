@@ -26,10 +26,14 @@ pub struct VulkanApp {
 
     swapchain_container: SwapchainContainer,
     image_views: Vec<vk::ImageView>,
+    framebuffers: Vec<vk::Framebuffer>,
 
     render_pass: vk::RenderPass,
     pipeline_layout: vk::PipelineLayout,
     graphics_pipeline: vk::Pipeline,
+
+    command_pool: vk::CommandPool,
+    command_buffers: Vec<vk::CommandBuffer>,
 
     #[cfg(debug_assertions)]
     debug_utils_loader: DebugUtils,
@@ -79,6 +83,23 @@ impl VulkanApp {
             swapchain_container.swapchain_extent,
         );
 
+        let framebuffers = Self::create_framebuffers(
+            &device,
+            render_pass,
+            &image_views,
+            swapchain_container.swapchain_extent,
+        );
+
+        let command_pool = Self::create_command_pool(&device, &indices);
+        let command_buffers = Self::create_command_buffers(
+            &device,
+            command_pool,
+            graphics_pipeline,
+            &framebuffers,
+            render_pass,
+            swapchain_container.swapchain_extent,
+        );
+
         #[cfg(debug_assertions)]
         let (debug_utils_loader, debug_utils_messenger) =
             Self::setup_debug_utils(&entry, &instance);
@@ -97,10 +118,14 @@ impl VulkanApp {
 
             swapchain_container,
             image_views,
+            framebuffers,
 
             render_pass,
             pipeline_layout,
             graphics_pipeline,
+
+            command_pool,
+            command_buffers,
 
             #[cfg(debug_assertions)]
             debug_utils_loader,
@@ -275,6 +300,12 @@ impl VulkanApp {
 impl Drop for VulkanApp {
     fn drop(&mut self) {
         unsafe {
+            self.device.destroy_command_pool(self.command_pool, None);
+
+            for &framebuffer in self.framebuffers.iter() {
+                self.device.destroy_framebuffer(framebuffer, None);
+            }
+
             self.device.destroy_pipeline(self.graphics_pipeline, None);
             self.device
                 .destroy_pipeline_layout(self.pipeline_layout, None);
