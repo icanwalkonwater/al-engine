@@ -5,11 +5,11 @@ use crate::renderer::{
     ENGINE_VERSION, MAX_FRAMES_IN_FLIGHT, VULKAN_VERSION, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH,
 };
 use crate::APPLICATION_VERSION;
-#[cfg(debug_assertions)]
+#[cfg(feature = "validation-layers")]
 use ash::extensions::ext::DebugUtils;
-use ash::version::{DeviceV1_0, DeviceV1_2, EntryV1_0, InstanceV1_0};
+use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
-#[cfg(debug_assertions)]
+#[cfg(feature = "validation-layers")]
 use core::ffi;
 use std::collections::HashSet;
 use std::ffi::CString;
@@ -41,9 +41,9 @@ pub struct VulkanApp {
     sync_objects: SyncObjects,
     current_frame: usize,
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "validation-layers")]
     debug_utils_loader: DebugUtils,
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "validation-layers")]
     debug_utils_messenger: vk::DebugUtilsMessengerEXT,
 }
 
@@ -64,6 +64,10 @@ impl VulkanApp {
         let physical_device = Self::pick_physical_device(&instance, &surface_container);
         let (device, indices) =
             Self::create_logical_device(&instance, physical_device, &surface_container);
+
+        #[cfg(feature = "validation-layers")]
+        let (debug_utils_loader, debug_utils_messenger) =
+            Self::setup_debug_utils(&entry, &instance);
 
         let graphics_queue = unsafe { device.get_device_queue(indices.graphics, 0) };
         let presentation_queue = unsafe { device.get_device_queue(indices.presentation, 0) };
@@ -108,10 +112,6 @@ impl VulkanApp {
 
         let sync_objects = Self::create_sync_objects(&device);
 
-        #[cfg(debug_assertions)]
-        let (debug_utils_loader, debug_utils_messenger) =
-            Self::setup_debug_utils(&entry, &instance);
-
         Self {
             _entry: entry,
             window,
@@ -138,9 +138,9 @@ impl VulkanApp {
             sync_objects,
             current_frame: 0,
 
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             debug_utils_loader,
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             debug_utils_messenger,
         }
     }
@@ -156,7 +156,7 @@ impl VulkanApp {
 
     /// Create a Vulkan instance.
     fn create_instance(entry: &ash::Entry, window: &winit::window::Window) -> ash::Instance {
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "validation-layers")]
         {
             if !Self::check_validation_layer_support(entry) {
                 panic!("Validation layers requested, but not available !");
@@ -184,14 +184,14 @@ impl VulkanApp {
                 .collect::<Vec<_>>();
 
             // Add the debug extension if requested
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             extension_names.push(DebugUtils::name().as_ptr());
 
             extension_names
         };
 
         // !!! _required_layers_raw_names contains owned data that need to stay in scope until the instance is created !
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "validation-layers")]
         let (_required_layers_raw_names, required_layers_names) =
             Self::get_validation_layers_raw_owned();
 
@@ -201,14 +201,14 @@ impl VulkanApp {
                 .application_info(&app_info)
                 .enabled_extension_names(&extension_names);
 
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             {
                 builder.p_next = &Self::get_messenger_create_info()
                     as *const vk::DebugUtilsMessengerCreateInfoEXT
                     as *const ffi::c_void;
             }
 
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             let builder = builder.enabled_layer_names(&required_layers_names);
 
             builder.build()
@@ -267,7 +267,7 @@ impl VulkanApp {
         let features_to_enable = vk::PhysicalDeviceFeatures::builder().build();
         let enable_extensions = [ash::extensions::khr::Swapchain::name().as_ptr()];
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "validation-layers")]
         let (_required_layers_raw_names, required_layers_names) =
             Self::get_validation_layers_raw_owned();
 
@@ -277,7 +277,7 @@ impl VulkanApp {
                 .enabled_features(&features_to_enable)
                 .enabled_extension_names(&enable_extensions);
 
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             let builder = builder.enabled_layer_names(&required_layers_names);
 
             builder.build()
@@ -411,7 +411,7 @@ impl Drop for VulkanApp {
                 .surface_loader
                 .destroy_surface(self.surface_container.surface, None);
 
-            #[cfg(debug_assertions)]
+            #[cfg(feature = "validation-layers")]
             self.debug_utils_loader
                 .destroy_debug_utils_messenger(self.debug_utils_messenger, None);
 

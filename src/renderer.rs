@@ -1,7 +1,7 @@
 use ash::vk;
 
 mod buffers;
-#[cfg(debug_assertions)]
+#[cfg(feature = "validation-layers")]
 mod debug_utils;
 mod device_selection;
 mod graphics_pipeline;

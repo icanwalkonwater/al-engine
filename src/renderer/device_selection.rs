@@ -1,6 +1,6 @@
 //! This module extends [`VulkanApp`] to implement physical device scoring and selection.
 
-#[cfg(debug_assertions)]
+#[cfg(feature = "validation-layers")]
 use crate::renderer::debug_utils::debug_physical_device;
 use crate::renderer::vulkan_app::{SurfaceContainer, VulkanApp};
 use crate::renderer::REQUIRED_DEVICE_EXTENSIONS;
@@ -78,7 +78,7 @@ impl VulkanApp {
         let (physical_device, _) = physical_devices
             .into_iter()
             .filter_map(|device| {
-                #[cfg(debug_assertions)]
+                #[cfg(feature = "validation-layers")]
                 debug_physical_device(instance, device);
 
                 if let Some(score) =
@@ -192,15 +192,21 @@ impl VulkanApp {
                 .expect("Failed to enumerate device extension properties !")
         };
 
-        #[cfg(debug_assertions)]
+        #[cfg(feature = "validation-layers")]
         trace!("Available extensions: {}", available_extensions.len());
 
         let available_extensions_names = available_extensions
             .into_iter()
             .map(|extension| {
                 let name = vk_to_owned_string(&extension.extension_name);
-                #[cfg(debug_assertions)]
-                trace!("- {} v{}", name, extension.spec_version);
+                #[cfg(feature = "validation-layers")]
+                trace!(
+                    "- {} v{}.{}.{}",
+                    name,
+                    vk::version_major(extension.spec_version),
+                    vk::version_minor(extension.spec_version),
+                    vk::version_patch(extension.spec_version)
+                );
 
                 name
             })

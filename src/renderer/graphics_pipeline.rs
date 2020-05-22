@@ -13,9 +13,9 @@ impl VulkanApp {
         extent: vk::Extent2D,
     ) -> (vk::Pipeline, vk::PipelineLayout) {
         let vert_shader =
-            Self::create_shader_module(device, &Self::read_shader_code("identity.vert.spv"));
+            Self::create_shader_module(device, &Self::read_shader_code("default_triangle.vert.spv"));
         let frag_shader =
-            Self::create_shader_module(device, &Self::read_shader_code("red.frag.spv"));
+            Self::create_shader_module(device, &Self::read_shader_code("default_triangle.frag.spv"));
 
         let entry_point = CString::new("main").unwrap();
 
