@@ -15,28 +15,30 @@ use winit::event_loop::EventLoop;
 
 pub struct VulkanApp {
     _entry: ash::Entry,
-    instance: ash::Instance,
+    pub(super) instance: ash::Instance,
     window: winit::window::Window,
 
-    surface_container: SurfaceContainer,
+    pub(super) surface_container: SurfaceContainer,
 
-    physical_device: vk::PhysicalDevice,
-    device: ash::Device,
+    pub(super) physical_device: vk::PhysicalDevice,
+    pub(super) device: ash::Device,
+
+    pub(super) queue_families: QueueFamilies,
     graphics_queue: vk::Queue,
     presentation_queue: vk::Queue,
 
-    swapchain_container: SwapchainContainer,
-    image_views: Vec<vk::ImageView>,
-    framebuffers: Vec<vk::Framebuffer>,
+    pub(super) swapchain_container: SwapchainContainer,
+    pub(super) image_views: Vec<vk::ImageView>,
+    pub(super) framebuffers: Vec<vk::Framebuffer>,
 
-    render_pass: vk::RenderPass,
-    pipeline_layout: vk::PipelineLayout,
-    graphics_pipeline: vk::Pipeline,
+    pub(super) render_pass: vk::RenderPass,
+    pub(super) pipeline_layout: vk::PipelineLayout,
+    pub(super) graphics_pipeline: vk::Pipeline,
 
-    command_pool: vk::CommandPool,
-    command_buffers: Vec<vk::CommandBuffer>,
+    pub(super) command_pool: vk::CommandPool,
+    pub(super) command_buffers: Vec<vk::CommandBuffer>,
 
-    sync_objects: SyncObjects,
+    pub(super) sync_objects: SyncObjects,
     current_frame: usize,
 
     #[cfg(feature = "validation-layers")]
@@ -45,7 +47,7 @@ pub struct VulkanApp {
     debug_utils_messenger: vk::DebugUtilsMessengerEXT,
 }
 
-pub(in crate::renderer) struct SurfaceContainer {
+pub(super) struct SurfaceContainer {
     pub surface_loader: ash::extensions::khr::Surface,
     pub surface: vk::SurfaceKHR,
 }
@@ -60,52 +62,52 @@ impl VulkanApp {
         let surface_container = Self::create_surface(&entry, &instance, &window);
 
         let physical_device = Self::pick_physical_device(&instance, &surface_container);
-        let (device, indices) =
+        let (device, queue_families) =
             Self::create_logical_device(&instance, physical_device, &surface_container);
 
         #[cfg(feature = "validation-layers")]
         let (debug_utils_loader, debug_utils_messenger) =
             Self::setup_debug_utils(&entry, &instance);
 
-        let graphics_queue = unsafe { device.get_device_queue(indices.graphics, 0) };
-        let presentation_queue = unsafe { device.get_device_queue(indices.presentation, 0) };
+        let graphics_queue = unsafe { device.get_device_queue(queue_families.graphics, 0) };
+        let presentation_queue = unsafe { device.get_device_queue(queue_families.presentation, 0) };
 
         let swapchain_container = Self::create_swapchain(
             &instance,
             &device,
             physical_device,
             &surface_container,
-            &indices,
+            &queue_families,
         );
 
         let image_views = Self::create_image_views(
             &device,
-            swapchain_container.swapchain_format,
-            &swapchain_container.swapchain_images,
+            swapchain_container.format,
+            &swapchain_container.images,
         );
 
-        let render_pass = Self::create_render_pass(&device, swapchain_container.swapchain_format);
+        let render_pass = Self::create_render_pass(&device, swapchain_container.format);
         let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
             &device,
             render_pass,
-            swapchain_container.swapchain_extent,
+            swapchain_container.extent,
         );
 
         let framebuffers = Self::create_framebuffers(
             &device,
             render_pass,
             &image_views,
-            swapchain_container.swapchain_extent,
+            swapchain_container.extent,
         );
 
-        let command_pool = Self::create_command_pool(&device, &indices);
+        let command_pool = Self::create_command_pool(&device, &queue_families);
         let command_buffers = Self::create_command_buffers(
             &device,
             command_pool,
             graphics_pipeline,
             &framebuffers,
             render_pass,
-            swapchain_container.swapchain_extent,
+            swapchain_container.extent,
         );
 
         let sync_objects = Self::create_sync_objects(&device);
@@ -119,6 +121,8 @@ impl VulkanApp {
 
             physical_device,
             device,
+
+            queue_families,
             graphics_queue,
             presentation_queue,
 
@@ -169,8 +173,7 @@ impl VulkanApp {
             .engine_name(&engine_name)
             .application_version(APPLICATION_VERSION)
             .engine_version(ENGINE_VERSION)
-            .api_version(VULKAN_VERSION)
-            .build();
+            .api_version(VULKAN_VERSION);
 
         // Platform specific extensions to enable
         #[allow(unused_mut)]
@@ -190,19 +193,17 @@ impl VulkanApp {
             Self::get_validation_layers_raw_owned();
 
         #[allow(unused_mut)]
-        let mut create_info_builder = vk::InstanceCreateInfo::builder()
+        let create_info = vk::InstanceCreateInfo::builder()
             .application_info(&app_info)
             .enabled_extension_names(&extension_names);
 
         #[cfg(feature = "validation-layers")]
         let mut messenger_create_info = Self::get_messenger_create_info();
         #[cfg(feature = "validation-layers")]
-        let create_info_builder = create_info_builder.push_next(&mut messenger_create_info);
+        let create_info = create_info.push_next(&mut messenger_create_info);
 
         #[cfg(feature = "validation-layers")]
-        let create_info_builder = create_info_builder.enabled_layer_names(&required_layers_names);
-
-        let create_info = create_info_builder.build();
+        let create_info = create_info.enabled_layer_names(&required_layers_names);
 
         let instance = unsafe {
             entry
@@ -289,20 +290,32 @@ impl VulkanApp {
     pub fn draw_frame(&mut self) {
         let wait_fences = [self.sync_objects.inflight_fences[self.current_frame]];
 
-        let (image_index, is_sub_optimal) = unsafe {
+        unsafe {
             self.device
                 .wait_for_fences(&wait_fences, true, std::u64::MAX)
                 .expect("Failed to wait for Fences !");
+        }
 
-            self.swapchain_container
-                .swapchain_loader
+        let (image_index, is_sub_optimal) = unsafe {
+            let result = self.swapchain_container
+                .loader
                 .acquire_next_image(
                     self.swapchain_container.swapchain,
                     std::u64::MAX,
                     self.sync_objects.image_available_semaphores[self.current_frame],
                     vk::Fence::null(),
-                )
-                .expect("Failed to Acquire Next Image !")
+                );
+
+            match result {
+                Ok(image_index) => image_index,
+                Err(result) => match result {
+                    vk::Result::ERROR_OUT_OF_DATE_KHR => {
+                        self.recreate_swapchain();
+                        return;
+                    },
+                    _ => panic!("Failed to Acquire Next Image !")
+                }
+            }
         };
 
         let wait_semaphores = [self.sync_objects.image_available_semaphores[self.current_frame]];
@@ -336,11 +349,22 @@ impl VulkanApp {
             .image_indices(&[image_index])
             .build();
 
-        unsafe {
+        let result = unsafe {
             self.swapchain_container
-                .swapchain_loader
+                .loader
                 .queue_present(self.presentation_queue, &presentation_info)
-                .expect("Failed to execute Queue Present !");
+        };
+
+        let need_new_swapchain = match result {
+            Ok(_) => false,
+            Err(result) => match result {
+                vk::Result::ERROR_OUT_OF_DATE_KHR | vk::Result::SUBOPTIMAL_KHR => true,
+                _ => panic!("Failed to execute Queue Present !"),
+            }
+        };
+
+        if need_new_swapchain {
+            self.recreate_swapchain();
         }
 
         self.current_frame = (self.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -358,9 +382,8 @@ impl Drop for VulkanApp {
     fn drop(&mut self) {
         unsafe {
             // Wait for frames to finish rendering before destroying stuff
-            self.device
-                .wait_for_fences(&self.sync_objects.inflight_fences, true, std::u64::MAX)
-                .expect("Failed to Wait For Fences !");
+            self.device.device_wait_idle()
+                .expect("Failed to wait idle");
 
             for ((&image_available_semaphore, &render_finished_semaphore), &inflight_fence) in self
                 .sync_objects
@@ -376,24 +399,9 @@ impl Drop for VulkanApp {
                 self.device.destroy_fence(inflight_fence, None);
             }
 
+            self.cleanup_swapchain();
+
             self.device.destroy_command_pool(self.command_pool, None);
-
-            for &framebuffer in self.framebuffers.iter() {
-                self.device.destroy_framebuffer(framebuffer, None);
-            }
-
-            self.device.destroy_pipeline(self.graphics_pipeline, None);
-            self.device
-                .destroy_pipeline_layout(self.pipeline_layout, None);
-            self.device.destroy_render_pass(self.render_pass, None);
-
-            for &image_view in &self.image_views {
-                self.device.destroy_image_view(image_view, None);
-            }
-
-            self.swapchain_container
-                .swapchain_loader
-                .destroy_swapchain(self.swapchain_container.swapchain, None);
 
             self.device.destroy_device(None);
 

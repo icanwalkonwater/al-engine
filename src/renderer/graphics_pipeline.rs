@@ -7,7 +7,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 impl VulkanApp {
-    pub(in crate::renderer) fn create_graphics_pipeline(
+    pub(super) fn create_graphics_pipeline(
         device: &ash::Device,
         render_pass: vk::RenderPass,
         extent: vk::Extent2D,
@@ -156,7 +156,7 @@ impl VulkanApp {
         (graphics_pipelines[0], pipeline_layout)
     }
 
-    pub(in crate::renderer) fn create_render_pass(
+    pub(super) fn create_render_pass(
         device: &ash::Device,
         format: vk::Format,
     ) -> vk::RenderPass {

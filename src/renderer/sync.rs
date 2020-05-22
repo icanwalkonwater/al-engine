@@ -12,7 +12,7 @@ pub struct SyncObjects {
 
 impl VulkanApp {
     /// Create semaphores and fences used to synchronize the rendering steps.
-    pub(in crate::renderer) fn create_sync_objects(device: &ash::Device) -> SyncObjects {
+    pub(super) fn create_sync_objects(device: &ash::Device) -> SyncObjects {
         let mut sync_objects = SyncObjects::default();
 
         let semaphore_create_info = vk::SemaphoreCreateInfo::builder().build();

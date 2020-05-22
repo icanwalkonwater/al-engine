@@ -5,7 +5,7 @@ use ash::vk;
 
 impl VulkanApp {
     /// Create framebuffers to receive the output of a render pass.
-    pub(in crate::renderer) fn create_framebuffers(
+    pub(super) fn create_framebuffers(
         device: &ash::Device,
         render_pass: vk::RenderPass,
         image_views: &[vk::ImageView],
@@ -15,7 +15,6 @@ impl VulkanApp {
             .iter()
             .map(|&image_view| {
                 let attachments = [image_view];
-
                 let framebuffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(render_pass)
                     .attachments(&attachments)
@@ -33,7 +32,7 @@ impl VulkanApp {
     }
 
     /// Create a command pool used to create command buffers.
-    pub(in crate::renderer) fn create_command_pool(
+    pub(super) fn create_command_pool(
         device: &ash::Device,
         queue_families: &QueueFamilies,
     ) -> vk::CommandPool {
@@ -48,7 +47,7 @@ impl VulkanApp {
     }
 
     /// Create command buffers configured with a pipeline and a render pass.
-    pub(in crate::renderer) fn create_command_buffers(
+    pub(super) fn create_command_buffers(
         device: &ash::Device,
         command_pool: vk::CommandPool,
         pipeline: vk::Pipeline,

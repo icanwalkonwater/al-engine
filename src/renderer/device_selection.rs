@@ -10,7 +10,7 @@ use ash::vk;
 use log::{info, trace};
 use std::collections::HashSet;
 
-pub struct QueueFamilies {
+pub(super) struct QueueFamilies {
     pub graphics: u32,
     pub presentation: u32,
 }
@@ -66,7 +66,7 @@ impl QueueFamiliesBuilder {
 }
 
 impl VulkanApp {
-    pub(in crate::renderer) fn pick_physical_device(
+    pub(super) fn pick_physical_device(
         instance: &ash::Instance,
         surface: &SurfaceContainer,
     ) -> vk::PhysicalDevice {
@@ -145,7 +145,7 @@ impl VulkanApp {
         score
     }
 
-    pub(in crate::renderer) fn find_queue_families(
+    pub(super) fn find_queue_families(
         instance: &ash::Instance,
         physical_device: vk::PhysicalDevice,
         surface_container: &SurfaceContainer,

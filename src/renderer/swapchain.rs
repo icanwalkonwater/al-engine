@@ -9,11 +9,11 @@ use ash::vk::Extent2D;
 use log::warn;
 
 pub(in crate::renderer) struct SwapchainContainer {
-    pub swapchain_loader: ash::extensions::khr::Swapchain,
+    pub loader: ash::extensions::khr::Swapchain,
     pub swapchain: vk::SwapchainKHR,
-    pub swapchain_images: Vec<vk::Image>,
-    pub swapchain_format: vk::Format,
-    pub swapchain_extent: vk::Extent2D,
+    pub images: Vec<vk::Image>,
+    pub format: vk::Format,
+    pub extent: vk::Extent2D,
 }
 
 pub(in crate::renderer) struct SwapchainSupport {
@@ -24,7 +24,7 @@ pub(in crate::renderer) struct SwapchainSupport {
 
 impl VulkanApp {
     /// Create the swapchain and its images.
-    pub(in crate::renderer) fn create_swapchain(
+    pub(super) fn create_swapchain(
         instance: &ash::Instance,
         device: &ash::Device,
         physical_device: vk::PhysicalDevice,
@@ -90,15 +90,98 @@ impl VulkanApp {
         };
 
         SwapchainContainer {
-            swapchain_loader,
+            loader: swapchain_loader,
             swapchain,
-            swapchain_images,
-            swapchain_format: format.format,
-            swapchain_extent: extent,
+            images: swapchain_images,
+            format: format.format,
+            extent: extent,
         }
     }
 
-    pub(in crate::renderer) fn query_swapchain_support(
+    /// Recreate (in this order)
+    /// - The swapchain
+    /// - The image views
+    /// - The render pass
+    /// - The graphics pipeline & layout
+    /// - The framebuffers
+    /// - The command buffers
+    pub(super) fn recreate_swapchain(&mut self) {
+        unsafe {
+            self.device
+                .device_wait_idle()
+                .expect("Failed to wait until device is idle !");
+        }
+
+        self.cleanup_swapchain();
+
+        let swapchain_container = Self::create_swapchain(
+            &self.instance,
+            &self.device,
+            self.physical_device,
+            &self.surface_container,
+            &self.queue_families,
+        );
+
+        self.swapchain_container = swapchain_container;
+
+        self.image_views = Self::create_image_views(
+            &self.device,
+            self.swapchain_container.format,
+            &self.swapchain_container.images,
+        );
+
+        self.render_pass = Self::create_render_pass(&self.device, self.swapchain_container.format);
+
+        let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
+            &self.device,
+            self.render_pass,
+            self.swapchain_container.extent,
+        );
+        self.graphics_pipeline = graphics_pipeline;
+        self.pipeline_layout = pipeline_layout;
+
+        self.framebuffers = Self::create_framebuffers(
+            &self.device,
+            self.render_pass,
+            &self.image_views,
+            self.swapchain_container.extent,
+        );
+
+        self.command_buffers = Self::create_command_buffers(
+            &self.device,
+            self.command_pool,
+            self.graphics_pipeline,
+            &self.framebuffers,
+            self.render_pass,
+            self.swapchain_container.extent,
+        );
+    }
+
+    /// Destroys command buffers, graphics pipeline, pipeline layout, render pass, image views and swapchain.
+    pub(super) fn cleanup_swapchain(&mut self) {
+        unsafe {
+            self.device
+                .free_command_buffers(self.command_pool, &self.command_buffers);
+            for &framebuffer in self.framebuffers.iter() {
+                self.device.destroy_framebuffer(framebuffer, None);
+            }
+
+            self.device.destroy_pipeline(self.graphics_pipeline, None);
+            self.device
+                .destroy_pipeline_layout(self.pipeline_layout, None);
+            self.device.destroy_render_pass(self.render_pass, None);
+
+            for &image_view in self.image_views.iter() {
+                self.device.destroy_image_view(image_view, None);
+            }
+
+            self.swapchain_container
+                .loader
+                .destroy_swapchain(self.swapchain_container.swapchain, None);
+        }
+    }
+
+    pub(super) fn query_swapchain_support(
         physical_device: vk::PhysicalDevice,
         surface_container: &SurfaceContainer,
     ) -> SwapchainSupport {
@@ -133,7 +216,7 @@ impl VulkanApp {
     }
 
     /// Create image views to access swapchain images.
-    pub(in crate::renderer) fn create_image_views(
+    pub(super) fn create_image_views(
         device: &ash::Device,
         surface_format: vk::Format,
         images: &[vk::Image],

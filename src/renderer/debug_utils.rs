@@ -13,7 +13,7 @@ pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 1] =
     ["VK_LAYER_KHRONOS_validation"];
 
 impl VulkanApp {
-    pub(in crate::renderer) fn setup_debug_utils(
+    pub(super) fn setup_debug_utils(
         entry: &ash::Entry,
         instance: &ash::Instance,
     ) -> (DebugUtils, vk::DebugUtilsMessengerEXT) {
@@ -28,7 +28,7 @@ impl VulkanApp {
         (debug_utils_loader, utils_messenger)
     }
 
-    pub(in crate::renderer) fn get_messenger_create_info() -> vk::DebugUtilsMessengerCreateInfoEXT {
+    pub(super) fn get_messenger_create_info() -> vk::DebugUtilsMessengerCreateInfoEXT {
         vk::DebugUtilsMessengerCreateInfoEXT::builder()
             .message_severity(vk::DebugUtilsMessageSeverityFlagsEXT::all())
             .message_type(vk::DebugUtilsMessageTypeFlagsEXT::all())
@@ -36,7 +36,7 @@ impl VulkanApp {
             .build()
     }
 
-    pub(in crate::renderer) fn check_validation_layer_support(entry: &ash::Entry) -> bool {
+    pub(super) fn check_validation_layer_support(entry: &ash::Entry) -> bool {
         let layer_properties = entry
             .enumerate_instance_layer_properties()
             .expect("Failed to enumerate instance layer properties !");
@@ -77,7 +77,7 @@ impl VulkanApp {
     /// # Access Violation
     /// This methods returns a Vec of owned string that need to stay in scope for as long as
     /// the pointer of the second Vec are in use
-    pub(in crate::renderer) fn get_validation_layers_raw_owned() -> (Vec<CString>, Vec<*const i8>) {
+    pub(super) fn get_validation_layers_raw_owned() -> (Vec<CString>, Vec<*const i8>) {
         // Create owned storage of raw names
         // !!! Need to be alive until the instance is created
         let required_layers_raw_names = REQUIRED_VALIDATION_LAYERS
