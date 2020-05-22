@@ -73,8 +73,7 @@ impl VulkanApp {
             .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
             .present_mode(presentation_mode)
             .clipped(true)
-            .image_array_layers(1)
-            .build();
+            .image_array_layers(1);
 
         let swapchain_loader = ash::extensions::khr::Swapchain::new(instance, device);
         let swapchain = unsafe {
@@ -162,8 +161,7 @@ impl VulkanApp {
                             .layer_count(1)
                             .build(),
                     )
-                    .image(image)
-                    .build();
+                    .image(image);
 
                 unsafe {
                     device

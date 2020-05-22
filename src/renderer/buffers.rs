@@ -14,13 +14,14 @@ impl VulkanApp {
         image_views
             .iter()
             .map(|&image_view| {
+                let attachments = [image_view];
+
                 let framebuffer_create_info = vk::FramebufferCreateInfo::builder()
                     .render_pass(render_pass)
-                    .attachments(&[image_view])
+                    .attachments(&attachments)
                     .width(extent.width)
                     .height(extent.height)
-                    .layers(1)
-                    .build();
+                    .layers(1);
 
                 unsafe {
                     device
@@ -36,9 +37,8 @@ impl VulkanApp {
         device: &ash::Device,
         queue_families: &QueueFamilies,
     ) -> vk::CommandPool {
-        let command_pool_create_info = vk::CommandPoolCreateInfo::builder()
-            .queue_family_index(queue_families.graphics)
-            .build();
+        let command_pool_create_info =
+            vk::CommandPoolCreateInfo::builder().queue_family_index(queue_families.graphics);
 
         unsafe {
             device
@@ -59,8 +59,7 @@ impl VulkanApp {
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(command_pool)
             .command_buffer_count(framebuffers.len() as u32)
-            .level(vk::CommandBufferLevel::PRIMARY)
-            .build();
+            .level(vk::CommandBufferLevel::PRIMARY);
 
         let command_buffers = unsafe {
             device
@@ -70,8 +69,7 @@ impl VulkanApp {
 
         for (i, &command_buffer) in command_buffers.iter().enumerate() {
             let command_buffer_begin_info = vk::CommandBufferBeginInfo::builder()
-                .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE)
-                .build();
+                .flags(vk::CommandBufferUsageFlags::SIMULTANEOUS_USE);
 
             unsafe {
                 device
@@ -94,8 +92,7 @@ impl VulkanApp {
                         .extent(extent)
                         .build(),
                 )
-                .clear_values(&clear_values)
-                .build();
+                .clear_values(&clear_values);
 
             unsafe {
                 device.cmd_begin_render_pass(

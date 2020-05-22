@@ -9,8 +9,6 @@ use crate::APPLICATION_VERSION;
 use ash::extensions::ext::DebugUtils;
 use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
-#[cfg(feature = "validation-layers")]
-use core::ffi;
 use std::collections::HashSet;
 use std::ffi::CString;
 use winit::event_loop::EventLoop;
@@ -175,44 +173,36 @@ impl VulkanApp {
             .build();
 
         // Platform specific extensions to enable
-        let extension_names = {
-            #[allow(unused_mut)]
-            let mut extension_names = ash_window::enumerate_required_extensions(window)
-                .expect("Failed to gather required Vulkan extensions !")
-                .into_iter()
-                .map(|extension| extension.as_ptr())
-                .collect::<Vec<_>>();
+        #[allow(unused_mut)]
+        let mut extension_names = ash_window::enumerate_required_extensions(window)
+            .expect("Failed to gather required Vulkan extensions !")
+            .into_iter()
+            .map(|extension| extension.as_ptr())
+            .collect::<Vec<_>>();
 
-            // Add the debug extension if requested
-            #[cfg(feature = "validation-layers")]
-            extension_names.push(DebugUtils::name().as_ptr());
-
-            extension_names
-        };
+        // Add the debug extension if requested
+        #[cfg(feature = "validation-layers")]
+        extension_names.push(DebugUtils::name().as_ptr());
 
         // !!! _required_layers_raw_names contains owned data that need to stay in scope until the instance is created !
         #[cfg(feature = "validation-layers")]
         let (_required_layers_raw_names, required_layers_names) =
             Self::get_validation_layers_raw_owned();
 
-        let create_info = {
-            #[allow(unused_mut)]
-            let mut builder = vk::InstanceCreateInfo::builder()
-                .application_info(&app_info)
-                .enabled_extension_names(&extension_names);
+        #[allow(unused_mut)]
+        let mut create_info_builder = vk::InstanceCreateInfo::builder()
+            .application_info(&app_info)
+            .enabled_extension_names(&extension_names);
 
-            #[cfg(feature = "validation-layers")]
-            {
-                builder.p_next = &Self::get_messenger_create_info()
-                    as *const vk::DebugUtilsMessengerCreateInfoEXT
-                    as *const ffi::c_void;
-            }
+        #[cfg(feature = "validation-layers")]
+        let mut messenger_create_info = Self::get_messenger_create_info();
+        #[cfg(feature = "validation-layers")]
+        let create_info_builder = create_info_builder.push_next(&mut messenger_create_info);
 
-            #[cfg(feature = "validation-layers")]
-            let builder = builder.enabled_layer_names(&required_layers_names);
+        #[cfg(feature = "validation-layers")]
+        let create_info_builder = create_info_builder.enabled_layer_names(&required_layers_names);
 
-            builder.build()
-        };
+        let create_info = create_info_builder.build();
 
         let instance = unsafe {
             entry

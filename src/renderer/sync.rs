@@ -1,7 +1,7 @@
 use crate::renderer::vulkan_app::VulkanApp;
-use ash::vk;
 use crate::renderer::MAX_FRAMES_IN_FLIGHT;
 use ash::version::DeviceV1_0;
+use ash::vk;
 
 #[derive(Default)]
 pub struct SyncObjects {
@@ -23,17 +23,24 @@ impl VulkanApp {
 
         for _ in 0..MAX_FRAMES_IN_FLIGHT {
             unsafe {
-                let image_available_semaphore = device.create_semaphore(&semaphore_create_info, None)
+                let image_available_semaphore = device
+                    .create_semaphore(&semaphore_create_info, None)
                     .expect("Failed to create Semaphore !");
 
-                let render_finished_semaphore = device.create_semaphore(&semaphore_create_info, None)
+                let render_finished_semaphore = device
+                    .create_semaphore(&semaphore_create_info, None)
                     .expect("Failed to create Semaphore !");
 
-                let inflight_fence = device.create_fence(&fence_create_info, None)
+                let inflight_fence = device
+                    .create_fence(&fence_create_info, None)
                     .expect("Failed to create Fence !");
 
-                sync_objects.image_available_semaphores.push(image_available_semaphore);
-                sync_objects.render_finished_semaphores.push(render_finished_semaphore);
+                sync_objects
+                    .image_available_semaphores
+                    .push(image_available_semaphore);
+                sync_objects
+                    .render_finished_semaphores
+                    .push(render_finished_semaphore);
                 sync_objects.inflight_fences.push(inflight_fence);
             }
         }

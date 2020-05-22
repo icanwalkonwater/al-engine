@@ -29,6 +29,7 @@ impl QueueFamiliesBuilder {
         // Note: a family with 0 queues need to have a score of 0
         score += family.queue_count * 100;
         // TODO: take into account the min_image_transfer_granularity
+        // TODO: well nobody really care so
         score
     }
 

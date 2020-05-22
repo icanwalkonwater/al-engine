@@ -12,13 +12,18 @@ impl VulkanApp {
         render_pass: vk::RenderPass,
         extent: vk::Extent2D,
     ) -> (vk::Pipeline, vk::PipelineLayout) {
-        let vert_shader =
-            Self::create_shader_module(device, &Self::read_shader_code("default_triangle.vert.spv"));
-        let frag_shader =
-            Self::create_shader_module(device, &Self::read_shader_code("default_triangle.frag.spv"));
+        let vert_shader = Self::create_shader_module(
+            device,
+            &Self::read_shader_code("default_triangle.vert.spv"),
+        );
+        let frag_shader = Self::create_shader_module(
+            device,
+            &Self::read_shader_code("default_triangle.frag.spv"),
+        );
 
         let entry_point = CString::new("main").unwrap();
 
+        // WARN: Lifetimes discarded
         let shader_stages = [
             vk::PipelineShaderStageCreateInfo::builder()
                 .module(vert_shader)
@@ -55,8 +60,7 @@ impl VulkanApp {
 
         let viewport_state = vk::PipelineViewportStateCreateInfo::builder()
             .viewports(&viewports)
-            .scissors(&scissors)
-            .build();
+            .scissors(&scissors);
 
         let rasterization_state = vk::PipelineRasterizationStateCreateInfo::builder()
             .cull_mode(vk::CullModeFlags::BACK)
@@ -91,8 +95,7 @@ impl VulkanApp {
             .front(stencil_state)
             .back(stencil_state)
             .max_depth_bounds(1.)
-            .min_depth_bounds(0.)
-            .build();
+            .min_depth_bounds(0.);
 
         let color_attachment_states = [vk::PipelineColorBlendAttachmentState::builder()
             .blend_enable(false)
@@ -109,8 +112,7 @@ impl VulkanApp {
             .logic_op_enable(false)
             .logic_op(vk::LogicOp::COPY)
             .attachments(&color_attachment_states)
-            .blend_constants([0., 0., 0., 0.])
-            .build();
+            .blend_constants([0., 0., 0., 0.]);
 
         let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder().build();
 
@@ -120,6 +122,7 @@ impl VulkanApp {
                 .expect("Failed to create pipeline layout !")
         };
 
+        // WARN: lifetimes discarded
         let graphics_pipeline_create_infos = [vk::GraphicsPipelineCreateInfo::builder()
             .stages(&shader_stages)
             .vertex_input_state(&vertex_input_state)
@@ -173,9 +176,10 @@ impl VulkanApp {
             .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
             .build();
 
+        let color_attachments = [color_attachment_ref];
         let subpasses = [vk::SubpassDescription::builder()
             .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
-            .color_attachments(&[color_attachment_ref])
+            .color_attachments(&color_attachments)
             .build()];
 
         // Sync
@@ -186,14 +190,13 @@ impl VulkanApp {
             .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
             .src_access_mask(vk::AccessFlags::empty())
             .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
-            .build()
-        ];
+            .build()];
 
+        let color_attachments = [color_attachment];
         let render_pass_create_info = vk::RenderPassCreateInfo::builder()
-            .attachments(&[color_attachment])
+            .attachments(&color_attachments)
             .subpasses(&subpasses)
-            .dependencies(&subpass_dependencies)
-            .build();
+            .dependencies(&subpass_dependencies);
 
         unsafe {
             device
@@ -203,7 +206,7 @@ impl VulkanApp {
     }
 
     fn create_shader_module(device: &ash::Device, code: &[u32]) -> vk::ShaderModule {
-        let shader_module_create_info = vk::ShaderModuleCreateInfo::builder().code(code).build();
+        let shader_module_create_info = vk::ShaderModuleCreateInfo::builder().code(code);
 
         unsafe {
             device
