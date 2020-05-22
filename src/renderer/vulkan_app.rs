@@ -27,6 +27,10 @@ pub struct VulkanApp {
     swapchain_container: SwapchainContainer,
     image_views: Vec<vk::ImageView>,
 
+    render_pass: vk::RenderPass,
+    pipeline_layout: vk::PipelineLayout,
+    graphics_pipeline: vk::Pipeline,
+
     #[cfg(debug_assertions)]
     debug_utils_loader: DebugUtils,
     #[cfg(debug_assertions)]
@@ -68,7 +72,12 @@ impl VulkanApp {
             &swapchain_container.swapchain_images,
         );
 
-        let graphics_pipeline = Self::create_graphics_pipeline(&device);
+        let render_pass = Self::create_render_pass(&device, swapchain_container.swapchain_format);
+        let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
+            &device,
+            render_pass,
+            swapchain_container.swapchain_extent,
+        );
 
         #[cfg(debug_assertions)]
         let (debug_utils_loader, debug_utils_messenger) =
@@ -88,6 +97,10 @@ impl VulkanApp {
 
             swapchain_container,
             image_views,
+
+            render_pass,
+            pipeline_layout,
+            graphics_pipeline,
 
             #[cfg(debug_assertions)]
             debug_utils_loader,
@@ -262,6 +275,11 @@ impl VulkanApp {
 impl Drop for VulkanApp {
     fn drop(&mut self) {
         unsafe {
+            self.device.destroy_pipeline(self.graphics_pipeline, None);
+            self.device
+                .destroy_pipeline_layout(self.pipeline_layout, None);
+            self.device.destroy_render_pass(self.render_pass, None);
+
             for &image_view in &self.image_views {
                 self.device.destroy_image_view(image_view, None);
             }
@@ -271,6 +289,7 @@ impl Drop for VulkanApp {
                 .destroy_swapchain(self.swapchain_container.swapchain, None);
 
             self.device.destroy_device(None);
+
             self.surface_container
                 .surface_loader
                 .destroy_surface(self.surface_container.surface, None);
