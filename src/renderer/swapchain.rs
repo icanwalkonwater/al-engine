@@ -160,6 +160,8 @@ impl VulkanApp {
             self.pipeline_layout,
             &self.descriptor_sets,
         );
+
+        self.ubo = Self::create_ubo(self.swapchain_container.extent);
     }
 
     /// Destroys command buffers, graphics pipeline, pipeline layout, render pass, image views and swapchain.

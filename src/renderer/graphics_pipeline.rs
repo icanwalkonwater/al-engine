@@ -5,9 +5,45 @@ use ash::vk;
 use std::ffi::CString;
 use std::fs::File;
 use std::path::PathBuf;
+use crate::renderer::vertex::Vertex2DRgb;
 use crate::renderer::vertex::Vertex;
+use crate::renderer::shader_container::ShaderContainer;
 
 impl VulkanApp {
+    fn create_shader_stages<V>(device: &ash::Device, vertex_shader: &str, fragment_shader: &str) {
+        let vert = Self::create_shader_module(device, &Self::read_shader_code(vertex_shader));
+        let frag = Self::create_shader_module(device, &Self::read_shader_code(fragment_shader));
+
+        let entry_point = CString::new("main").unwrap();
+    }
+
+    fn create_generic_pipeline(device: &ash::Device) {
+        // Create shader stages
+        let shader_container = ShaderContainer::new(
+            device,
+            "default_triangle.vert.spv",
+            "default_triangle.frag.spv",
+        );
+        // Vertex attribute bindings
+        let vertex_binding_descriptions = Vertex2DRgb::get_binding_descriptions();
+        let vertex_attribute_descriptions = Vertex2DRgb::get_attribute_descriptions();
+        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
+            .vertex_binding_descriptions(&vertex_binding_descriptions)
+            .vertex_attribute_descriptions(&vertex_attribute_descriptions);
+
+        // Input assembly
+        // Viewport & scissors
+
+        // Rasterization
+        // Multisample
+        // Depth test
+
+        // Color attachments & blend
+
+        // Layout (w/ UBO)
+        // Create info
+    }
+
     pub(super) fn create_graphics_pipeline(
         device: &ash::Device,
         render_pass: vk::RenderPass,
@@ -39,8 +75,8 @@ impl VulkanApp {
                 .build(),
         ];
 
-        let vertex_binding_descriptions = Vertex::get_binding_descriptions();
-        let vertex_attribute_descriptions = Vertex::get_attribute_descriptions();
+        let vertex_binding_descriptions = Vertex2DRgb::get_binding_descriptions();
+        let vertex_attribute_descriptions = Vertex2DRgb::get_attribute_descriptions();
         let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
             .vertex_binding_descriptions(&vertex_binding_descriptions)
             .vertex_attribute_descriptions(&vertex_attribute_descriptions);

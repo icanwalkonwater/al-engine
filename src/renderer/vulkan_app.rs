@@ -45,12 +45,12 @@ pub struct VulkanApp {
     pub(super) index_buffer: vk::Buffer,
     pub(super) index_buffer_memory: vk::DeviceMemory,
 
-    ubo: UniformBufferObject,
+    pub(super) ubo: UniformBufferObject,
     pub(super) ubo_layout: vk::DescriptorSetLayout,
     pub(super) uniform_buffers: Vec<vk::Buffer>,
     pub(super) uniform_buffers_memory: Vec<vk::DeviceMemory>,
 
-    descriptor_pool: vk::DescriptorPool,
+    pub(super) descriptor_pool: vk::DescriptorPool,
     pub(super) descriptor_sets: Vec<vk::DescriptorSet>,
 
     pub(super) sync_objects: SyncObjects,
@@ -263,8 +263,20 @@ impl VulkanApp {
         let (_required_layers_raw_names, required_layers_names) =
             Self::get_validation_layers_raw_owned();
 
+        /*
+        let enable_features = [
+            vk::ValidationFeatureEnableEXT::GPU_ASSISTED,
+            vk::ValidationFeatureEnableEXT::GPU_ASSISTED_RESERVE_BINDING_SLOT,
+            vk::ValidationFeatureEnableEXT::BEST_PRACTICES,
+            vk::ValidationFeatureEnableEXT::DEBUG_PRINTF,
+        ];
+        let mut validation_features = vk::ValidationFeaturesEXT::builder()
+            .enabled_validation_features(&enable_features);
+         */
+
         #[allow(unused_mut)]
         let create_info = vk::InstanceCreateInfo::builder()
+            // .push_next(&mut validation_features)
             .application_info(&app_info)
             .enabled_extension_names(&extension_names);
 
@@ -357,7 +369,10 @@ impl VulkanApp {
 
     fn update_uniform_buffer(&mut self, current_image: usize, delta_time: f32) {
         use nalgebra::RealField;
-        self.ubo.model = Rotation3::from_axis_angle(&Vector3::z_axis(), f32::frac_pi_2() * delta_time).to_homogeneous() * &self.ubo.model;
+        self.ubo.model =
+            Rotation3::from_axis_angle(&Vector3::z_axis(), f32::frac_pi_2() * delta_time)
+                .to_homogeneous()
+                * &self.ubo.model;
 
         let ubos = [&self.ubo];
 

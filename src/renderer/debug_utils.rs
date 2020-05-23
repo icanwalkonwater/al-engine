@@ -12,6 +12,9 @@ use std::ffi::{CStr, CString};
 pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 1] =
     ["VK_LAYER_KHRONOS_validation"];
 
+// pub(in crate::renderer) const REQUIRED_VALIDATION_LAYERS: [&str; 2] =
+//     ["VK_LAYER_KHRONOS_validation", "VK_EXT_validation_features"];
+
 impl VulkanApp {
     pub(super) fn setup_debug_utils(
         entry: &ash::Entry,

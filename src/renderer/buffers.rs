@@ -1,9 +1,22 @@
 use crate::renderer::device_selection::QueueFamilies;
 use crate::renderer::ubo::UniformBufferObject;
-use crate::renderer::vertex::{Vertex, TRIANGLE_INDICES, TRIANGLE_VERTICES};
+use crate::renderer::vertex::{Vertex2DRgb, TRIANGLE_INDICES, TRIANGLE_VERTICES};
 use crate::renderer::vulkan_app::VulkanApp;
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
+
+#[derive(Copy, Clone)]
+pub(super) struct BufferAllocation {
+    pub buffer: vk::Buffer,
+    pub memory: vk::DeviceMemory,
+}
+
+impl BufferAllocation {
+    pub unsafe fn free(self, device: &ash::Device) {
+        device.destroy_buffer(self.buffer, None);
+        device.free_memory(self.memory, None);
+    }
+}
 
 impl VulkanApp {
     /// Create framebuffers to receive the output of a render pass.
@@ -169,7 +182,7 @@ impl VulkanApp {
                     vk::MemoryMapFlags::empty(),
                 )
                 .expect("Failed to Map Vertex Buffer Memory !")
-                as *mut Vertex;
+                as *mut Vertex2DRgb;
 
             data_ptr.copy_from_nonoverlapping(TRIANGLE_VERTICES.as_ptr(), TRIANGLE_VERTICES.len());
 
