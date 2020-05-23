@@ -12,6 +12,7 @@ impl VulkanApp {
         device: &ash::Device,
         render_pass: vk::RenderPass,
         extent: vk::Extent2D,
+        ubo_layout: vk::DescriptorSetLayout,
     ) -> (vk::Pipeline, vk::PipelineLayout) {
         let vert_shader = Self::create_shader_module(
             device,
@@ -119,7 +120,9 @@ impl VulkanApp {
             .attachments(&color_attachment_states)
             .blend_constants([0., 0., 0., 0.]);
 
-        let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder();
+        let set_layouts = [ubo_layout];
+        let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder()
+            .set_layouts(&set_layouts);
 
         let pipeline_layout = unsafe {
             device

@@ -136,6 +136,7 @@ impl VulkanApp {
             &self.device,
             self.render_pass,
             self.swapchain_container.extent,
+            self.ubo_layout,
         );
         self.graphics_pipeline = graphics_pipeline;
         self.pipeline_layout = pipeline_layout;
@@ -156,6 +157,8 @@ impl VulkanApp {
             self.swapchain_container.extent,
             self.vertex_buffer,
             self.index_buffer,
+            self.pipeline_layout,
+            &self.descriptor_sets,
         );
     }
 

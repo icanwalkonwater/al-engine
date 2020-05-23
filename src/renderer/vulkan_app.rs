@@ -1,6 +1,7 @@
 use crate::renderer::device_selection::QueueFamilies;
 use crate::renderer::swapchain::SwapchainContainer;
 use crate::renderer::sync::SyncObjects;
+use crate::renderer::ubo::UniformBufferObject;
 use crate::renderer::{
     ENGINE_VERSION, MAX_FRAMES_IN_FLIGHT, VULKAN_VERSION, WINDOW_HEIGHT, WINDOW_TITLE, WINDOW_WIDTH,
 };
@@ -9,6 +10,7 @@ use crate::APPLICATION_VERSION;
 use ash::extensions::ext::DebugUtils;
 use ash::version::{DeviceV1_0, EntryV1_0, InstanceV1_0};
 use ash::vk;
+use nalgebra::{Rotation3, Vector3};
 use std::collections::HashSet;
 use std::ffi::CString;
 use winit::event_loop::EventLoop;
@@ -43,6 +45,14 @@ pub struct VulkanApp {
     pub(super) index_buffer: vk::Buffer,
     pub(super) index_buffer_memory: vk::DeviceMemory,
 
+    ubo: UniformBufferObject,
+    pub(super) ubo_layout: vk::DescriptorSetLayout,
+    pub(super) uniform_buffers: Vec<vk::Buffer>,
+    pub(super) uniform_buffers_memory: Vec<vk::DeviceMemory>,
+
+    descriptor_pool: vk::DescriptorPool,
+    pub(super) descriptor_sets: Vec<vk::DescriptorSet>,
+
     pub(super) sync_objects: SyncObjects,
     current_frame: usize,
 
@@ -67,6 +77,8 @@ impl VulkanApp {
         let surface_container = Self::create_surface(&entry, &instance, &window);
 
         let physical_device = Self::pick_physical_device(&instance, &surface_container);
+        let physical_device_memory_properties =
+            unsafe { instance.get_physical_device_memory_properties(physical_device) };
         let (device, queue_families) =
             Self::create_logical_device(&instance, physical_device, &surface_container);
 
@@ -92,8 +104,13 @@ impl VulkanApp {
         );
 
         let render_pass = Self::create_render_pass(&device, swapchain_container.format);
-        let (graphics_pipeline, pipeline_layout) =
-            Self::create_graphics_pipeline(&device, render_pass, swapchain_container.extent);
+        let ubo_layout = Self::create_description_set_layout(&device);
+        let (graphics_pipeline, pipeline_layout) = Self::create_graphics_pipeline(
+            &device,
+            render_pass,
+            swapchain_container.extent,
+            ubo_layout,
+        );
 
         let framebuffers = Self::create_framebuffers(
             &device,
@@ -120,6 +137,24 @@ impl VulkanApp {
             graphics_queue,
         );
 
+        let (uniform_buffers, uniform_buffers_memory) = Self::create_uniform_buffers(
+            &device,
+            &physical_device_memory_properties,
+            swapchain_container.images.len(),
+        );
+
+        let descriptor_pool =
+            Self::create_descriptor_pool(&device, swapchain_container.images.len());
+        let descriptor_sets = Self::create_descriptor_sets(
+            &device,
+            descriptor_pool,
+            ubo_layout,
+            &uniform_buffers,
+            swapchain_container.images.len(),
+        );
+
+        let ubo = Self::create_ubo(swapchain_container.extent);
+
         let command_buffers = Self::create_command_buffers(
             &device,
             command_pool,
@@ -129,6 +164,8 @@ impl VulkanApp {
             swapchain_container.extent,
             vertex_buffer,
             index_buffer,
+            pipeline_layout,
+            &descriptor_sets,
         );
 
         let sync_objects = Self::create_sync_objects(&device);
@@ -162,6 +199,14 @@ impl VulkanApp {
             vertex_buffer_memory,
             index_buffer,
             index_buffer_memory,
+
+            ubo,
+            ubo_layout,
+            uniform_buffers,
+            uniform_buffers_memory,
+
+            descriptor_pool,
+            descriptor_sets,
 
             sync_objects,
             current_frame: 0,
@@ -310,12 +355,37 @@ impl VulkanApp {
         (device, indices)
     }
 
-    fn update_uniform_buffer() {}
+    fn update_uniform_buffer(&mut self, current_image: usize, delta_time: f32) {
+        use nalgebra::RealField;
+        self.ubo.model = Rotation3::from_axis_angle(&Vector3::z_axis(), f32::frac_pi_2() * delta_time).to_homogeneous() * &self.ubo.model;
+
+        let ubos = [&self.ubo];
+
+        let buffer_size =
+            (std::mem::size_of::<UniformBufferObject>() * ubos.len()) as vk::DeviceSize;
+
+        unsafe {
+            let data_ptr =
+                self.device
+                    .map_memory(
+                        self.uniform_buffers_memory[current_image],
+                        0,
+                        buffer_size,
+                        vk::MemoryMapFlags::empty(),
+                    )
+                    .expect("Failed to Map Memory") as *mut UniformBufferObject;
+
+            data_ptr.copy_from_nonoverlapping(*ubos.as_ptr(), ubos.len());
+
+            self.device
+                .unmap_memory(self.uniform_buffers_memory[current_image]);
+        }
+    }
 }
 
 // Drawing methods
 impl VulkanApp {
-    pub fn draw_frame(&mut self) {
+    pub fn draw_frame(&mut self, delta_time: f32) {
         let wait_fences = [self.sync_objects.inflight_fences[self.current_frame]];
 
         unsafe {
@@ -343,6 +413,8 @@ impl VulkanApp {
                 },
             }
         };
+
+        self.update_uniform_buffer(image_index as usize, delta_time);
 
         let wait_semaphores = [self.sync_objects.image_available_semaphores[self.current_frame]];
         let wait_stages = [vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT];
@@ -425,6 +497,18 @@ impl Drop for VulkanApp {
             }
 
             self.cleanup_swapchain();
+
+            self.device
+                .destroy_descriptor_pool(self.descriptor_pool, None);
+            self.device
+                .destroy_descriptor_set_layout(self.ubo_layout, None);
+            self.uniform_buffers
+                .iter()
+                .zip(self.uniform_buffers_memory.iter())
+                .for_each(|(&uniform_buffer, &uniform_buffer_memory)| {
+                    self.device.destroy_buffer(uniform_buffer, None);
+                    self.device.free_memory(uniform_buffer_memory, None);
+                });
 
             // After the swapchain destruction because we used this buffer in a draw command.
             self.device.destroy_buffer(self.vertex_buffer, None);

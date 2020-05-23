@@ -7,6 +7,7 @@ mod device_selection;
 mod graphics_pipeline;
 mod swapchain;
 mod sync;
+mod ubo;
 mod vertex;
 pub mod vulkan_app;
 

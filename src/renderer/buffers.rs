@@ -1,4 +1,5 @@
 use crate::renderer::device_selection::QueueFamilies;
+use crate::renderer::ubo::UniformBufferObject;
 use crate::renderer::vertex::{Vertex, TRIANGLE_INDICES, TRIANGLE_VERTICES};
 use crate::renderer::vulkan_app::VulkanApp;
 use ash::version::{DeviceV1_0, InstanceV1_0};
@@ -57,6 +58,8 @@ impl VulkanApp {
         extent: vk::Extent2D,
         vertex_buffer: vk::Buffer,
         index_buffer: vk::Buffer,
+        pipeline_layout: vk::PipelineLayout,
+        descriptor_sets: &[vk::DescriptorSet],
     ) -> Vec<vk::CommandBuffer> {
         let command_buffer_allocate_info = vk::CommandBufferAllocateInfo::builder()
             .command_pool(command_pool)
@@ -107,12 +110,22 @@ impl VulkanApp {
 
                 let vertex_buffers = [vertex_buffer];
                 let offsets = [0u64];
+                let descriptor_sets_to_bind = [descriptor_sets[i]];
+
                 device.cmd_bind_vertex_buffers(command_buffer, 0, &vertex_buffers, &offsets);
                 device.cmd_bind_index_buffer(
                     command_buffer,
                     index_buffer,
                     0,
                     vk::IndexType::UINT32,
+                );
+                device.cmd_bind_descriptor_sets(
+                    command_buffer,
+                    vk::PipelineBindPoint::GRAPHICS,
+                    pipeline_layout,
+                    0,
+                    &descriptor_sets_to_bind,
+                    &[],
                 );
 
                 device.cmd_draw_indexed(command_buffer, TRIANGLE_INDICES.len() as u32, 1, 0, 0, 0);
@@ -248,7 +261,27 @@ impl VulkanApp {
         (index_buffer, index_buffer_memory)
     }
 
-    fn create_uniform_buffers() {}
+    pub(super) fn create_uniform_buffers(
+        device: &ash::Device,
+        device_memory_properties: &vk::PhysicalDeviceMemoryProperties,
+        swapchain_image_count: usize,
+    ) -> (Vec<vk::Buffer>, Vec<vk::DeviceMemory>) {
+        let buffer_size = std::mem::size_of::<UniformBufferObject>() as vk::DeviceSize;
+
+        (0..swapchain_image_count)
+            .map(|_| {
+                let (uniform_buffer, uniform_buffer_memory) = Self::create_buffer(
+                    device,
+                    buffer_size,
+                    vk::BufferUsageFlags::UNIFORM_BUFFER,
+                    vk::MemoryPropertyFlags::HOST_VISIBLE | vk::MemoryPropertyFlags::HOST_COHERENT,
+                    device_memory_properties,
+                );
+
+                (uniform_buffer, uniform_buffer_memory)
+            })
+            .unzip()
+    }
 
     fn create_buffer(
         device: &ash::Device,
