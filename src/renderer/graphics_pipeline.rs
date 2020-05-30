@@ -1,3 +1,6 @@
+use crate::renderer::shader_container::ShaderContainer;
+use crate::renderer::vertex::Vertex;
+use crate::renderer::vertex::Vertex2DRgb;
 use crate::renderer::vulkan_app::VulkanApp;
 use crate::renderer::SHADERS_LOCATION;
 use ash::version::DeviceV1_0;
@@ -5,9 +8,6 @@ use ash::vk;
 use std::ffi::CString;
 use std::fs::File;
 use std::path::PathBuf;
-use crate::renderer::vertex::Vertex2DRgb;
-use crate::renderer::vertex::Vertex;
-use crate::renderer::shader_container::ShaderContainer;
 
 impl VulkanApp {
     fn create_shader_stages<V>(device: &ash::Device, vertex_shader: &str, fragment_shader: &str) {
@@ -157,8 +157,8 @@ impl VulkanApp {
             .blend_constants([0., 0., 0., 0.]);
 
         let set_layouts = [ubo_layout];
-        let pipeline_layout_create_info = vk::PipelineLayoutCreateInfo::builder()
-            .set_layouts(&set_layouts);
+        let pipeline_layout_create_info =
+            vk::PipelineLayoutCreateInfo::builder().set_layouts(&set_layouts);
 
         let pipeline_layout = unsafe {
             device

@@ -1,10 +1,10 @@
 use al_engine::fps_limiter::FpsLimiter;
 use al_engine::renderer::vulkan_app::VulkanApp;
+use al_engine::FPS_LIMIT;
 use log::{warn, LevelFilter};
 use simplelog::{Config, SimpleLogger, TermLogger, TerminalMode};
 use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use al_engine::FPS_LIMIT;
 
 fn main() {
     setup_logger();

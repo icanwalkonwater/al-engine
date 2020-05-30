@@ -1,9 +1,12 @@
 use crate::renderer::SHADERS_LOCATION;
 use ash::version::DeviceV1_0;
 use ash::vk;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::path::PathBuf;
+
+pub const VERTEX_MAIN: &str = "main\0";
+pub const FRAGMENT_MAIN: &str = "main\0";
 
 pub(super) struct ShaderContainer<'a> {
     device: &'a ash::Device,
@@ -16,26 +19,24 @@ impl<'a> ShaderContainer<'a> {
         let vert = Self::create_shader_module(device, &Self::read_shader_code(vertex_shader));
         let frag = Self::create_shader_module(device, &Self::read_shader_code(fragment_shader));
 
-        Self {
-            device,
-            vert,
-            frag,
-        }
+        Self { device, vert, frag }
     }
 }
 
 impl ShaderContainer<'_> {
     pub fn as_shader_stages(&self) -> Vec<vk::PipelineShaderStageCreateInfo> {
-        let entry_point = CString::new("main").unwrap();
+        let vertex_main = unsafe { CStr::from_ptr(VERTEX_MAIN.as_ptr() as *mut i8) };
+        let fragment_main = unsafe { CStr::from_ptr(FRAGMENT_MAIN.as_ptr() as *mut i8) };
+
         vec![
             vk::PipelineShaderStageCreateInfo::builder()
                 .module(self.vert)
-                .name(&entry_point)
+                .name(vertex_main)
                 .stage(vk::ShaderStageFlags::VERTEX)
                 .build(),
             vk::PipelineShaderStageCreateInfo::builder()
                 .module(self.frag)
-                .name(&entry_point)
+                .name(fragment_main)
                 .stage(vk::ShaderStageFlags::FRAGMENT)
                 .build(),
         ]
@@ -62,5 +63,14 @@ impl ShaderContainer<'_> {
 
         ash::util::read_spv(&mut file)
             .expect(&format!("Failed to read SPIR-V shader at {:?} !", path))
+    }
+}
+
+impl Drop for ShaderContainer<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            self.device.destroy_shader_module(self.vert, None);
+            self.device.destroy_shader_module(self.frag, None);
+        }
     }
 }

@@ -11,7 +11,9 @@ mod shader_container;
 mod swapchain;
 mod sync;
 mod ubo;
+#[macro_use]
 mod vertex;
+mod test_two_objects;
 pub mod vulkan_app;
 
 pub const WINDOW_TITLE: &str = "AL-Engine";

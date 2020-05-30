@@ -1,5 +1,5 @@
-use ash::vk;
 use crate::renderer::buffers::BufferAllocation;
+use ash::vk;
 
 pub struct RenderObject {
     pub(super) pipeline: vk::Pipeline,

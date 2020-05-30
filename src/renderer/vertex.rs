@@ -1,11 +1,21 @@
 use ash::vk;
 
 macro_rules! vulkan_format_trans {
-    (vec1) => {ash::vk::Format::R32_SFLOAT};
-    (vec2) => {ash::vk::Format::R32G32_SFLOAT};
-    (vec3) => {ash::vk::Format::R32G32B32_SFLOAT};
+    (vec1) => {
+        ash::vk::Format::R32_SFLOAT
+    };
+    (vec2) => {
+        ash::vk::Format::R32G32_SFLOAT
+    };
+    (vec3) => {
+        ash::vk::Format::R32G32B32_SFLOAT
+    };
+    (vec4) => {
+        ash::vk::Format::R32G32B32A32_SFLOAT
+    };
 }
 
+#[macro_export]
 macro_rules! impl_vertex {
     (
         $type:ty;
@@ -39,6 +49,33 @@ macro_rules! impl_vertex {
 pub trait Vertex {
     fn get_binding_descriptions() -> [vk::VertexInputBindingDescription; 1];
     fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription>;
+
+    /// WARNING
+    /// The third element of the tuple depends on the two `Vec`s at the beginning of the tuple.
+    fn get_pipeline_create_info() -> (
+        Vec<vk::VertexInputBindingDescription>,
+        Vec<vk::VertexInputAttributeDescription>,
+        vk::PipelineVertexInputStateCreateInfo,
+        vk::PipelineInputAssemblyStateCreateInfo,
+    ) {
+        let binding_descriptions = Self::get_binding_descriptions().to_vec();
+        let attribute_descriptions = Self::get_attribute_descriptions();
+        let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
+            .vertex_binding_descriptions(&binding_descriptions)
+            .vertex_attribute_descriptions(&attribute_descriptions)
+            .build();
+        let input_assembly_state = vk::PipelineInputAssemblyStateCreateInfo::builder()
+            .primitive_restart_enable(false)
+            .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
+            .build();
+
+        (
+            binding_descriptions,
+            attribute_descriptions,
+            vertex_input_state,
+            input_assembly_state,
+        )
+    }
 }
 
 #[repr(C)]

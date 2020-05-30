@@ -5,5 +5,3 @@ pub(super) struct Material {
     pub pipeline_layout: vk::PipelineLayout,
     pub render_passes: Vec<vk::RenderPass>,
 }
-
-
