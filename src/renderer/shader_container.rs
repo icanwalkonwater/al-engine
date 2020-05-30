@@ -1,9 +1,11 @@
-use crate::renderer::SHADERS_LOCATION;
-use ash::version::DeviceV1_0;
-use ash::vk;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::fs::File;
 use std::path::PathBuf;
+
+use ash::version::DeviceV1_0;
+use ash::vk;
+
+use crate::renderer::SHADERS_LOCATION;
 
 pub const VERTEX_MAIN: &str = "main\0";
 pub const FRAGMENT_MAIN: &str = "main\0";

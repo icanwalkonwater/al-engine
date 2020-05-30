@@ -1,8 +1,9 @@
+use ash::version::DeviceV1_0;
+use ash::vk;
+
 use crate::impl_vertex;
 use crate::renderer::shader_container::ShaderContainer;
 use crate::renderer::vertex::Vertex;
-use ash::version::DeviceV1_0;
-use ash::vk;
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -56,14 +57,12 @@ fn create_pipeline_viewport_state(
         .extent(extent)
         .build()];
 
-    (
-        viewports,
-        scissors,
-        vk::PipelineViewportStateCreateInfo::builder()
-            .viewports(&viewports)
-            .scissors(&scissors)
-            .build(),
-    )
+    let create_info = vk::PipelineViewportStateCreateInfo::builder()
+        .viewports(&viewports)
+        .scissors(&scissors)
+        .build();
+
+    (viewports, scissors, create_info)
 }
 
 fn create_pipeline_rasterization_multisample_state() -> (
@@ -125,15 +124,14 @@ fn create_pipeline_color_blend_state() -> (
         .alpha_blend_op(vk::BlendOp::ADD)
         .build()];
 
-    (
-        color_attachment_states,
-        vk::PipelineColorBlendStateCreateInfo::builder()
-            .logic_op_enable(false)
-            .logic_op(vk::LogicOp::COPY)
-            .attachments(&color_attachment_states)
-            .blend_constants([0., 0., 0., 0.])
-            .build(),
-    )
+    let create_info = vk::PipelineColorBlendStateCreateInfo::builder()
+        .logic_op_enable(false)
+        .logic_op(vk::LogicOp::COPY)
+        .attachments(&color_attachment_states)
+        .blend_constants([0., 0., 0., 0.])
+        .build();
+
+    (color_attachment_states, create_info)
 }
 
 fn create_pipeline_layout(

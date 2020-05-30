@@ -14,6 +14,8 @@ mod ubo;
 #[macro_use]
 mod vertex;
 mod test_two_objects;
+mod allocation;
+mod command_buffer_creator;
 pub mod vulkan_app;
 
 pub const WINDOW_TITLE: &str = "AL-Engine";

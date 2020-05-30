@@ -292,15 +292,15 @@ impl VulkanApp {
         if let Some(_) = mailbox {
             vk::PresentModeKHR::MAILBOX
         } else {
-            warn!("Mailbox presentation mode not found, trying Immediate");
+            warn!("Mailbox presentation mode not found, falling back to Immediate");
             let immediate = modes
                 .iter()
                 .find(|&&mode| mode == vk::PresentModeKHR::IMMEDIATE);
 
             if let Some(_) = immediate {
-                warn!("Immediate presentation mode not found, falling back to FIFO");
                 vk::PresentModeKHR::IMMEDIATE
             } else {
+                warn!("Immediate presentation mode not found, falling back to FIFO");
                 vk::PresentModeKHR::FIFO
             }
         }

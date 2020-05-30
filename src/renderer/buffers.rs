@@ -5,19 +5,6 @@ use crate::renderer::vulkan_app::VulkanApp;
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::vk;
 
-#[derive(Copy, Clone)]
-pub(super) struct BufferAllocation {
-    pub buffer: vk::Buffer,
-    pub memory: vk::DeviceMemory,
-}
-
-impl BufferAllocation {
-    pub unsafe fn free(self, device: &ash::Device) {
-        device.destroy_buffer(self.buffer, None);
-        device.free_memory(self.memory, None);
-    }
-}
-
 impl VulkanApp {
     /// Create framebuffers to receive the output of a render pass.
     pub(super) fn create_framebuffers(

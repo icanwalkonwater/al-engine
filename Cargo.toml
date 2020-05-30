@@ -8,10 +8,14 @@ edition = "2018"
 winit = "0.21.0"
 ash = "0.31.0"
 ash-window = "0.4.0"
+vk-mem = "0.2.2"
+memoffset = "0.5.4"
+
+nalgebra = "0.21.0"
+
 log = "0.4.8"
 simplelog = "0.7.4"
-nalgebra = "0.21.0"
-memoffset = "0.5.4"
+error-chain = "0.12.2"
 
 [features]
 default = []
