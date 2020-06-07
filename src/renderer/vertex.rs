@@ -46,18 +46,18 @@ macro_rules! impl_vertex {
     };
 }
 
-pub trait Vertex {
+pub(super) struct PipelineVertexInfoContainer {
+    binding_descriptions: Vec<vk::VertexInputBindingDescription>,
+    attribute_descriptions: Vec<vk::VertexInputAttributeDescription>,
+    pub vertex_input_state: vk::PipelineVertexInputStateCreateInfo,
+    pub input_assembly_state: vk::PipelineInputAssemblyStateCreateInfo,
+}
+
+pub(super) trait Vertex {
     fn get_binding_descriptions() -> [vk::VertexInputBindingDescription; 1];
     fn get_attribute_descriptions() -> Vec<vk::VertexInputAttributeDescription>;
 
-    /// WARNING
-    /// The third element of the tuple depends on the two `Vec`s at the beginning of the tuple.
-    fn get_pipeline_create_info() -> (
-        Vec<vk::VertexInputBindingDescription>,
-        Vec<vk::VertexInputAttributeDescription>,
-        vk::PipelineVertexInputStateCreateInfo,
-        vk::PipelineInputAssemblyStateCreateInfo,
-    ) {
+    fn get_pipeline_create_info() -> PipelineVertexInfoContainer {
         let binding_descriptions = Self::get_binding_descriptions().to_vec();
         let attribute_descriptions = Self::get_attribute_descriptions();
         let vertex_input_state = vk::PipelineVertexInputStateCreateInfo::builder()
@@ -69,12 +69,12 @@ pub trait Vertex {
             .topology(vk::PrimitiveTopology::TRIANGLE_LIST)
             .build();
 
-        (
+        PipelineVertexInfoContainer {
             binding_descriptions,
             attribute_descriptions,
             vertex_input_state,
             input_assembly_state,
-        )
+        }
     }
 }
 

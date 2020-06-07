@@ -13,6 +13,6 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
-void main() {
+void vert() {
     gl_Position = ubo.projection * vec4(position, 0.0, 1.0);
 }

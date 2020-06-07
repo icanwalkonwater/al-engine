@@ -10,6 +10,6 @@ out gl_PerVertex {
     vec4 gl_Position;
 };
 
-void main() {
+void frag() {
     gl_Position = vec4(position, 0.0, 1.0);
 }

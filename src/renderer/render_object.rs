@@ -4,7 +4,7 @@ use ash::vk;
 use crate::renderer::allocation::BufferAllocation;
 
 pub struct RenderObject<'a> {
-    pub(super) material: Material,
+    pub(super) material: Material<'a>,
 
     pub(super) vertex_buffer: BufferAllocation<'a>,
     pub(super) index_buffer: BufferAllocation<'a>,
@@ -12,6 +12,11 @@ pub struct RenderObject<'a> {
 }
 
 impl RenderObject<'_> {
+    pub fn new() {}
+}
+
+impl RenderObject<'_> {
+    #[inline]
     pub unsafe fn draw_to_buffer(&self, device: &ash::Device, command_buffer: vk::CommandBuffer) {
         // Bind pipeline
         self.material.bind_pipeline(device, command_buffer);

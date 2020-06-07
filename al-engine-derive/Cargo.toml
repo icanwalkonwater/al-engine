@@ -1,0 +1,13 @@
+[package]
+name = "al-engine-derive"
+version = "0.1.0"
+authors = ["Lucas Malandrino <lucas.malandrino@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# syn = { version = "1.0.29", features = ["derive"] }
+syn = "1.0.29"
+quote = "1.0.6"

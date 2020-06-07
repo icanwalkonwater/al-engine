@@ -2,7 +2,7 @@ use ash::vk;
 use ash::vk::Extent2D;
 use std::ops::Deref;
 
-struct PipelineViewportStateContainer {
+pub(super) struct PipelineViewportStateContainer {
     viewports: Vec<vk::Viewport>,
     scissors: Vec<vk::Rect2D>,
     create_info: vk::PipelineViewportStateCreateInfo,
@@ -45,11 +45,13 @@ impl Deref for PipelineViewportStateContainer {
     }
 }
 
-pub fn create_pipeline_viewport_state(extent: vk::Extent2D) -> PipelineViewportStateContainer {
+pub(super) fn create_pipeline_viewport_state(
+    extent: vk::Extent2D,
+) -> PipelineViewportStateContainer {
     PipelineViewportStateContainer::new(extent)
 }
 
-pub fn create_pipeline_rasterization_state(
+pub(super) fn create_pipeline_rasterization_state(
 ) -> vk::PipelineRasterizationStateCreateInfoBuilder<'static> {
     vk::PipelineRasterizationStateCreateInfo::builder()
         .cull_mode(vk::CullModeFlags::BACK)
@@ -61,8 +63,8 @@ pub fn create_pipeline_rasterization_state(
         .depth_bias_enable(false)
 }
 
-pub fn create_pipeline_multisample_state() -> vk::PipelineMultisampleStateCreateInfoBuilder<'static>
-{
+pub(super) fn create_pipeline_multisample_state(
+) -> vk::PipelineMultisampleStateCreateInfoBuilder<'static> {
     vk::PipelineMultisampleStateCreateInfo::builder()
         .rasterization_samples(vk::SampleCountFlags::TYPE_1)
         .sample_shading_enable(false)
@@ -70,7 +72,7 @@ pub fn create_pipeline_multisample_state() -> vk::PipelineMultisampleStateCreate
         .alpha_to_coverage_enable(false)
 }
 
-pub fn create_pipeline_depth_stencil_state(
+pub(super) fn create_pipeline_depth_stencil_state(
 ) -> vk::PipelineDepthStencilStateCreateInfoBuilder<'static> {
     let stencil_state = vk::StencilOpState::builder()
         .fail_op(vk::StencilOp::KEEP)
@@ -91,12 +93,12 @@ pub fn create_pipeline_depth_stencil_state(
         .min_depth_bounds(0.)
 }
 
-pub struct PipelineColorBlendStateContainer<'a> {
+pub(super) struct PipelineColorBlendStateContainer {
     color_blend_attachment_states: Vec<vk::PipelineColorBlendAttachmentState>,
     create_info: vk::PipelineColorBlendStateCreateInfo,
 }
 
-impl PipelineColorBlendStateContainer<'_> {
+impl PipelineColorBlendStateContainer {
     pub fn new() -> Self {
         let color_blend_attachment_states = vec![vk::PipelineColorBlendAttachmentState::builder()
             .blend_enable(false)
@@ -112,7 +114,7 @@ impl PipelineColorBlendStateContainer<'_> {
         let create_info = vk::PipelineColorBlendStateCreateInfo::builder()
             .logic_op_enable(false)
             .logic_op(vk::LogicOp::COPY)
-            .attachments(&color_attachment_states)
+            .attachments(&color_blend_attachment_states)
             .blend_constants([0., 0., 0., 0.])
             .build();
 
@@ -123,8 +125,14 @@ impl PipelineColorBlendStateContainer<'_> {
     }
 }
 
-pub fn create_pipeline_color_blend_state() -> PipelineColorBlendStateContainer<'_> {
-    PipelineColorBlendStateContainer::new()
+impl Deref for PipelineColorBlendStateContainer {
+    type Target = vk::PipelineColorBlendStateCreateInfo;
+
+    fn deref(&self) -> &Self::Target {
+        &self.create_info
+    }
 }
 
-pub fn create_pipeline_layout()
+pub(super) fn create_pipeline_color_blend_state() -> PipelineColorBlendStateContainer {
+    PipelineColorBlendStateContainer::new()
+}

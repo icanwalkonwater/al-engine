@@ -4,7 +4,7 @@ use crate::renderer::vertex::Vertex;
 use ash::vk;
 use std::ops::{Deref, DerefMut};
 
-pub struct BufferAllocation<'a> {
+pub(super) struct BufferAllocation<'a> {
     allocator: &'a VulkanAllocator,
     pub buffer: vk::Buffer,
     allocation: vk_mem::Allocation,
@@ -37,7 +37,7 @@ impl Drop for BufferAllocation<'_> {
     }
 }
 
-pub struct TemporaryMemoryMapping<'a> {
+pub(super) struct TemporaryMemoryMapping<'a> {
     allocation: &'a BufferAllocation<'a>,
     mapping: *mut u8,
 }
@@ -58,7 +58,7 @@ impl Drop for TemporaryMemoryMapping<'_> {
     }
 }
 
-pub struct VulkanAllocator {
+pub(super) struct VulkanAllocator {
     vma_allocator: vk_mem::Allocator,
 }
 
@@ -80,24 +80,24 @@ impl VulkanAllocator {
         })
     }
 
-    pub fn create_vertex_buffer_with_staging<V: Vertex>(
+    pub fn create_vertex_buffer_through_staging<V: Vertex>(
         &self,
         command_creator: &CommandBufferCreator,
         vertices: &[V],
     ) -> Result<BufferAllocation> {
-        self.create_buffer_with_staging(
+        self.create_static_buffer_through_staging(
             command_creator,
             vk::BufferUsageFlags::VERTEX_BUFFER,
             vertices,
         )
     }
 
-    pub fn create_index_buffer_with_staging<I>(
+    pub fn create_index_buffer_through_staging<I>(
         &self,
         command_creator: &CommandBufferCreator,
         indices: &[I],
     ) -> Result<BufferAllocation> {
-        self.create_buffer_with_staging(
+        self.create_static_buffer_through_staging(
             command_creator,
             vk::BufferUsageFlags::INDEX_BUFFER,
             indices,
@@ -127,13 +127,13 @@ impl VulkanAllocator {
         })
     }
 
-    fn create_buffer_with_staging<D>(
+    fn create_static_buffer_through_staging<D>(
         &self,
         command_creator: &CommandBufferCreator,
         usage: vk::BufferUsageFlags,
         data: &[D],
     ) -> Result<BufferAllocation> {
-        let size = std::mem::size_of_val(data) as vk::DeviceSize;
+        let size = std::mem::size_of_val(data) as _;
 
         // Allocate buffers
         let staging_buffer = self.allocate_staging_buffer(size)?;
@@ -150,7 +150,7 @@ impl VulkanAllocator {
         // Copy staging buffer to vertex bugger
         let command_buffer = command_creator.create_one_time_command_buffer()?;
         command_buffer.copy(&staging_buffer, &data_buffer, size);
-        command_creator.submit_blocking(command_buffer)?;
+        command_creator.submit_blocking(command_buffer.finish())?;
 
         Ok(data_buffer)
     }

@@ -9,9 +9,10 @@ pub const FPS_LIMIT: f32 = 60f32;
 
 mod errors {
     use error_chain::error_chain;
+
     error_chain! {
         foreign_links {
-            Vulkan(ash::vk::Result);
+            Vk(ash::vk::Result);
             VkMem(vk_mem::error::Error);
         }
     }

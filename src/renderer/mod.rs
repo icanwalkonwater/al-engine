@@ -16,6 +16,9 @@ mod vertex;
 mod test_two_objects;
 mod allocation;
 mod command_buffer_creator;
+mod descriptor_set_creator;
+#[macro_use]
+mod uniform_buffer_object;
 pub mod vulkan_app;
 
 pub const WINDOW_TITLE: &str = "AL-Engine";
